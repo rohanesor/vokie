@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -114,6 +115,7 @@ fun PushToTalkButton(onClick: () -> Unit) {
 @Composable
 fun SosButton(onClick: () -> Unit) { Button(onClick = onClick, colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.alert), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth().height(VokieDimens.sosButtonHeight).padding(horizontal = 20.dp).semantics { contentDescription = "SOS emergency broadcast. Requires hold confirmation." }) { Icon(Icons.Default.Warning, null); Spacer(Modifier.width(10.dp)); Column { Text("SOS", style = VokieTheme.typography.label); Text("Emergency Broadcast", style = VokieTheme.typography.caption) } } }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SosSheet(onDismiss: () -> Unit) {
     var confirmed by remember { mutableStateOf(false) }
