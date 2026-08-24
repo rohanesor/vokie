@@ -13,7 +13,8 @@ fun VokieTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
         darkColorScheme(
             background = colors.background,
             surface = colors.surface,
-            primary = colors.textPrimary,
+            primary = colors.accent,
+            onPrimary = androidx.compose.ui.graphics.Color.White,
             onBackground = colors.textPrimary,
             onSurface = colors.textPrimary,
             outline = colors.border,
@@ -23,7 +24,8 @@ fun VokieTheme(darkTheme: Boolean = true, content: @Composable () -> Unit) {
         lightColorScheme(
             background = colors.background,
             surface = colors.surface,
-            primary = colors.textPrimary,
+            primary = colors.accent,
+            onPrimary = androidx.compose.ui.graphics.Color.White,
             onBackground = colors.textPrimary,
             onSurface = colors.textPrimary,
             outline = colors.border,

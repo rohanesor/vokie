@@ -40,5 +40,5 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun clearError() { _error.value = null }
     fun reportError(message: String) { _error.value = message }
     fun discoverabilityRequest() = manager.discoverabilityRequest()
-    private fun action(block: suspend () -> Unit) { viewModelScope.launch { runCatching { block() }.onFailure { _error.value = it.message ?: "Communication failed" } } }
+    private fun action(block: suspend () -> Unit) { viewModelScope.launch { runCatching { block() }.onSuccess { _error.value = null }.onFailure { _error.value = it.message ?: "Communication failed" } } }
 }
