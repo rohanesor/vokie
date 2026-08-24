@@ -3,6 +3,8 @@ package com.vokie
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,7 +27,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.vokie.data.demoMessage
+import com.vokie.communication.BluetoothPermission
 import com.vokie.domain.model.*
 import com.vokie.ui.theme.*
 import kotlinx.coroutines.launch
@@ -102,7 +104,7 @@ fun HomeScreen(onSpeak: () -> Unit, onSos: () -> Unit) {
         item { Spacer(Modifier.height(22.dp)); PushToTalkButton(onClick = onSpeak); Text("Speak in your language. Vokie converts your speech to text and transmits it locally.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(horizontal = 36.dp, vertical = 14.dp)) }
         item { Text("Language  •  Tamil · தமிழ்", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
         item { Spacer(Modifier.height(18.dp)); SosButton(onClick = onSos) }
-        item { Text("DEMO MODE  •  Simulated local communication", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textMuted, modifier = Modifier.padding(20.dp)) }
+        item { Text("BLUETOOTH ONLY  •  Real peer communication", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textMuted, modifier = Modifier.padding(20.dp)) }
     }
 }
 
@@ -126,18 +128,30 @@ fun SosSheet(onDismiss: () -> Unit) {
 
 @Composable
 fun CommunicateScreen() {
-    var stage by remember { mutableStateOf("READY") }
-    var message by remember { mutableStateOf<Message?>(null) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val transport = (context.applicationContext as VokieApplication).bluetoothTransport
+    val peers by transport.peers.collectAsState()
+    val state by transport.connectionState.collectAsState()
+    var error by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val haptic = LocalHapticFeedback.current
+    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result.values.all { it }) scope.launch { runCatching { transport.discoverPeers() }.onFailure { error = it.message } }
+        else error = "Nearby Devices permission is required to discover and communicate with nearby Vokie phones."
+    }
     Column(Modifier.fillMaxSize()) {
-        AppHeader("Communicate", "Local speech → text → nearby device → voice")
+        AppHeader("Communicate", "Real nearby-device communication")
         Column(Modifier.padding(horizontal = 20.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { Text("WALKIE-TALKIE MODE", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary); Switch(checked = true, onCheckedChange = {}) }
-            Spacer(Modifier.height(12.dp)); StatusStrip(); Spacer(Modifier.height(24.dp))
-            Text(stage, style = VokieTheme.typography.labelSmall, color = if (stage == "FAILED") VokieTheme.colors.alert else VokieTheme.colors.success); Spacer(Modifier.height(14.dp))
-            PushToTalkButton { scope.launch { haptic.performHapticFeedback(HapticFeedbackType.LongPress); stage = "LISTENING…"; kotlinx.coroutines.delay(500); stage = "TRANSCRIBING…"; kotlinx.coroutines.delay(500); message = demoMessage("அம்மா, நான் பாதுகாப்பாக இருக்கிறேன்."); stage = "TRANSMITTING…"; kotlinx.coroutines.delay(500); stage = "SENT TO NEARBY DEVICE"; haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) } }
-            Spacer(Modifier.height(22.dp)); message?.let { MessageBubble(it) }; Spacer(Modifier.height(20.dp)); Text("The demo pipeline uses simulated on-device STT and Bluetooth. No internet required.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary)
+            StatusStrip(); Spacer(Modifier.height(16.dp))
+            Text("BLUETOOTH STATUS  •  ${state.name}", style = VokieTheme.typography.labelSmall, color = if (state == TransportConnectionState.FAILED) VokieTheme.colors.alert else VokieTheme.colors.textSecondary)
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { if (BluetoothPermission.hasDiscovery(context)) scope.launch { runCatching { transport.discoverPeers() }.onFailure { error = it.message } } else permissions.launch(BluetoothPermission.discoveryPermissions()) }, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.surface)) { Icon(Icons.Default.Search, null); Spacer(Modifier.width(8.dp)); Text(if (state == TransportConnectionState.SEARCHING) "SEARCHING…" else "FIND NEARBY DEVICES") }
+            Spacer(Modifier.height(14.dp))
+            if (peers.isEmpty()) Text(if (state == TransportConnectionState.SEARCHING) "Searching for Vokie-compatible Bluetooth devices…" else "No nearby Vokie device detected.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary)
+            peers.forEach { peer -> Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Bluetooth, null, tint = VokieTheme.colors.textSecondary); Column(Modifier.weight(1f).padding(horizontal = 10.dp)) { Text(peer.name, style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary); Text(if (peer.bonded) "PAIRED  •  ${peer.address}" else peer.address, style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary) }; Button(onClick = { if (BluetoothPermission.hasConnection(context)) scope.launch { runCatching { transport.connect(peer.id) }.onFailure { error = it.message } } else permissions.launch(BluetoothPermission.connectionPermissions()) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("CONNECT") } } } }
+            error?.let { Text(it, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(vertical = 12.dp)) }
+            Spacer(Modifier.height(18.dp)); Text("VOICE INPUT", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Spacer(Modifier.height(10.dp))
+            PushToTalkButton { error = "Speech recognition is not installed yet. No audio was captured or transmitted." }
+            Spacer(Modifier.height(14.dp)); Text("Speech recognition is unavailable until the local STT engine is installed. Vokie will not pretend to transcribe speech.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary)
         }
     }
 }

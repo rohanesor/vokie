@@ -9,7 +9,8 @@
 - Offline map, alert feed, contacts/resources/settings hub
 - Transport, STT, TTS interfaces isolated from UI
 - Room-ready local entities for messages, contacts, alerts, resources, regions, devices, settings
-- Clearly identified DEMO MODE with simulated Tamil STT → Bluetooth → received text/TTS path
+- Real Bluetooth RFCOMM transport with Vokie service UUID, discovery filtering, connection/server accept, framed envelopes, receiver acknowledgements, timeout and failure states
+- Speech input honestly reports unavailable until a local STT engine is installed; no simulated messages or delivery states
 
 ## Build
 Open in Android Studio (JDK 17, Android SDK 34) and run `assembleDebug`.

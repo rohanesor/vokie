@@ -27,4 +27,4 @@ data class MapRegionEntity(@PrimaryKey val id: String, val name: String, val dow
 @Entity(tableName = "devices")
 data class DeviceEntity(@PrimaryKey val id: String, val name: String, val lastSeen: Long, val transport: String)
 @Entity(tableName = "app_settings")
-data class AppSettingsEntity(@PrimaryKey val id: Int = 1, val language: String, val walkieTalkieMode: Boolean, val demoMode: Boolean, val darkMode: Boolean, val haptics: Boolean)
+data class AppSettingsEntity(@PrimaryKey val id: Int = 1, val language: String, val walkieTalkieMode: Boolean, val darkMode: Boolean, val haptics: Boolean)
