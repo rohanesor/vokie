@@ -6,21 +6,46 @@ plugins {
 
 android {
     namespace = "com.vokie"
+    val configuredVersionName = providers.gradleProperty("versionName").orElse("1.0.0")
+    val configuredVersionCode = providers.gradleProperty("versionCode").orElse("1")
+    val keystorePath = providers.environmentVariable("ANDROID_KEYSTORE_PATH")
+    val keystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD")
+    val keyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS")
+    val keyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD")
+    val productionRelease = providers.gradleProperty("productionRelease").orElse("false").get().toBoolean()
     compileSdk = 34
 
     defaultConfig {
         applicationId = "com.vokie"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = configuredVersionCode.get().toIntOrNull() ?: error("versionCode must be an integer")
+        versionName = configuredVersionName.get()
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }
     }
 
+    signingConfigs {
+        if (keystorePath.isPresent && keystorePassword.isPresent && keyAlias.isPresent && keyPassword.isPresent) {
+            create("release") {
+                storeFile = file(keystorePath.get())
+                storePassword = keystorePassword.get()
+                this.keyAlias = keyAlias.get()
+                this.keyPassword = keyPassword.get()
+            }
+        }
+    }
+
     buildTypes {
         release {
+            val signingConfigured = keystorePath.isPresent && keystorePassword.isPresent && keyAlias.isPresent && keyPassword.isPresent
+            if (productionRelease && !signingConfigured) {
+                throw GradleException("Production release signing is not configured. Set ANDROID_KEYSTORE_PATH, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, and ANDROID_KEY_PASSWORD.")
+            }
+            if (signingConfigured) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),

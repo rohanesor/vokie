@@ -1,0 +1,124 @@
+name: Vokie Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  VOKIE_BUCKET: ${{ vars.VOKIE_BUCKET }}
+  VOKIE_CLOUDFRONT_DISTRIBUTION_ID: ${{ vars.VOKIE_CLOUDFRONT_DISTRIBUTION_ID }}
+  AWS_DEPLOY_ROLE_ARN: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+
+jobs:
+  release:
+    name: Verify, sign, publish, and release
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Check out tagged source
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release configuration
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$KEYSTORE_B64" || { echo 'ANDROID_KEYSTORE_BASE64 is not configured'; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo 'ANDROID_KEYSTORE_PASSWORD is not configured'; exit 1; }
+          test -n "$KEY_ALIAS" || { echo 'ANDROID_KEY_ALIAS is not configured'; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo 'ANDROID_KEY_PASSWORD is not configured'; exit 1; }
+          test -n "$AWS_DEPLOY_ROLE_ARN" || { echo 'AWS_DEPLOY_ROLE_ARN is not configured'; exit 1; }
+          test -n "$AWS_REGION" || { echo 'AWS_REGION repository variable is not configured'; exit 1; }
+          test -n "$VOKIE_BUCKET" || { echo 'VOKIE_BUCKET repository variable is not configured'; exit 1; }
+          test -n "$VOKIE_CLOUDFRONT_DISTRIBUTION_ID" || { echo 'VOKIE_CLOUDFRONT_DISTRIBUTION_ID repository variable is not configured'; exit 1; }
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Decode release keystore
+        env:
+          KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/vokie-signing"
+          printf '%s' "$KEYSTORE_B64" | base64 --decode > "$RUNNER_TEMP/vokie-signing/release.jks"
+          {
+            echo "ANDROID_KEYSTORE_PATH=$RUNNER_TEMP/vokie-signing/release.jks"
+            echo "ANDROID_KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD"
+            echo "ANDROID_KEY_ALIAS=$KEY_ALIAS"
+            echo "ANDROID_KEY_PASSWORD=$KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Make Gradle wrapper executable
+        run: chmod +x ./gradlew
+
+      - name: Unit tests
+        run: ./gradlew test --no-daemon
+
+      - name: Android lint
+        run: ./gradlew lint --no-daemon
+
+      - name: Assemble signed release APK
+        env:
+          VERSION_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${VERSION_NAME#v}"
+          ./gradlew assembleRelease -PversionName="$version" -PproductionRelease=true --no-daemon
+          test -f app/build/outputs/apk/release/app-release.apk
+          mkdir -p release
+          cp app/build/outputs/apk/release/app-release.apk "release/Vokie-v${version}.apk"
+          sha256sum "release/Vokie-v${version}.apk" > "release/Vokie-v${version}.apk.sha256"
+
+      - name: Configure AWS credentials through GitHub OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Publish APK and website to AWS
+        env:
+          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_COMMIT: ${{ github.sha }}
+        run: |
+          chmod +x scripts/deploy-aws.sh
+          scripts/deploy-aws.sh "release/Vokie-${RELEASE_VERSION}.apk" "${RELEASE_VERSION#v}" "$RELEASE_COMMIT"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Vokie ${{ github.ref_name }}
+          generate_release_notes: true
+          body: |
+            ## Vokie ${{ github.ref_name }}
+
+            Voice when networks fail.
+
+            This release was built from `${{ github.sha }}`. See the download website for installation instructions and SHA-256 verification.
+          files: |
+            release/Vokie-${{ github.ref_name }}.apk
+            release/Vokie-${{ github.ref_name }}.apk.sha256

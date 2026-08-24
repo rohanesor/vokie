@@ -41,7 +41,9 @@ class BluetoothTransport(private val context: Context) : Transport {
     private val ackWaiters = ConcurrentHashMap<String, kotlinx.coroutines.CompletableDeferred<Boolean>>()
 
     private val discoveryReceiver = object : BroadcastReceiver() {
+        @SuppressLint("MissingPermission")
         override fun onReceive(ctx: Context, intent: Intent) {
+            if (!BluetoothPermission.hasDiscovery(ctx) || !BluetoothPermission.hasConnection(ctx)) return
             when (intent.action) {
                 BluetoothDevice.ACTION_FOUND -> {
                     val device = intent.getParcelableExtra<BluetoothDevice>(BluetoothDevice.EXTRA_DEVICE) ?: return
