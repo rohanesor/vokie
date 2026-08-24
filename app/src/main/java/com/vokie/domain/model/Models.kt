@@ -7,30 +7,48 @@ interface SpeechToTextEngine { suspend fun transcribe(audio: ByteArray): String 
 interface TextToSpeechEngine { suspend fun synthesize(text: String, language: String) }
 
 enum class TransportType { BLUETOOTH, WIFI_DIRECT, ULTRASONIC }
-enum class DeliveryState { QUEUED, BROADCASTING, RECEIVED_BY_PEER, RELAYED, DELIVERED, FAILED }
-enum class MessageType { TEXT, SOS, SAFE_CHECK_IN }
+enum class DeliveryState { QUEUED, TRANSMITTING, RETRYING, RECEIVED_BY_PEER, RELAYED, DELIVERED, FAILED }
+enum class MessageType { TEXT, SOS, CHECK_IN, SYSTEM }
 enum class CommunicationStatus { ONLINE, OFFLINE, BLUETOOTH_READY, WIFI_READY, SEARCHING, CONNECTED, TRANSMITTING, RECEIVING, QUEUED, FAILED }
-enum class VokieLanguage(val code: String, val displayName: String) { HI("HI", "Hindi"), GU("GU", "Gujarati"), MR("MR", "Marathi"), KN("KN", "Kannada"), ML("ML", "Malayalam"), TA("TA", "Tamil"), TE("TE", "Telugu"), OR("OR", "Odia"), BN("BN", "Bengali"), EN("EN", "English") }
+enum class VokieLanguage(val code: String, val displayName: String) {
+    HI("HI", "Hindi"), GU("GU", "Gujarati"), MR("MR", "Marathi"), KN("KN", "Kannada"),
+    ML("ML", "Malayalam"), TA("TA", "Tamil"), TE("TE", "Telugu"), OR("OR", "Odia"),
+    BN("BN", "Bengali"), EN("EN", "English");
+    companion object { fun isSupported(code: String) = entries.any { it.code == code } }
+}
 
 data class Message(
-    val id: String, val senderId: String, val timestamp: Long, val text: String,
-    val language: String = VokieLanguage.EN.code, val messageType: MessageType = MessageType.TEXT,
-    val deliveryState: DeliveryState = DeliveryState.QUEUED, val transport: TransportType? = null,
-    val hopCount: Int = 0, val receiverId: String? = null, val retryCount: Int = 0,
+    val id: String,
+    val senderId: String,
+    val timestamp: Long,
+    val text: String,
+    val language: String = VokieLanguage.EN.code,
+    val messageType: MessageType = MessageType.TEXT,
+    val deliveryState: DeliveryState = DeliveryState.QUEUED,
+    val transport: TransportType? = null,
+    val hopCount: Int = 0,
+    val receiverId: String? = null,
+    val retryCount: Int = 0,
+    val requiresAck: Boolean = true,
+    val lastError: String? = null,
 )
 
 data class Peer(val id: String, val name: String, val address: String, val bonded: Boolean, val rssi: Int? = null)
-enum class TransportConnectionState { UNAVAILABLE, IDLE, SEARCHING, CONNECTING, CONNECTED, DISCONNECTED, FAILED }
-data class SendResult(val messageId: String, val acknowledged: Boolean, val error: String? = null)
+enum class TransportConnectionState { UNAVAILABLE, PERMISSION_REQUIRED, BLUETOOTH_DISABLED, IDLE, SEARCHING, CONNECTING, CONNECTED, DISCONNECTED, FAILED }
+data class SendResult(val messageId: String, val acknowledged: Boolean, val ackLatencyMs: Long? = null, val error: String? = null)
 
 interface Transport {
     val type: TransportType
     val peers: StateFlow<List<Peer>>
     val connectionState: StateFlow<TransportConnectionState>
+    val connectedPeerId: StateFlow<String?>
+    suspend fun startListening()
     suspend fun discoverPeers()
+    suspend fun stopDiscovery()
     suspend fun connect(peerId: String)
     suspend fun disconnect()
     suspend fun send(message: Message): SendResult
+    suspend fun acknowledge(messageId: String)
     fun observeMessages(): Flow<Message>
 }
 

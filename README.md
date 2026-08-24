@@ -6,8 +6,8 @@ Vokie is an offline-first Android application for multilingual emergency communi
 
 ## Current status
 
-- **IMPLEMENTED:** Kotlin, Jetpack Compose, Material 3, dark-first emergency UI, Gradle wrapper, real Bluetooth RFCOMM transport, Vokie service UUID filtering, discovery, connection/server accept, framed protocol envelopes, receiver acknowledgements, timeout/failure states, CI/CD definitions, private S3 + CloudFront infrastructure, and static download website.
-- **IN PROGRESS:** Room persistence/DAO wiring, offline outbound queue, text send UI, and physical two-device validation.
+- **IMPLEMENTED:** Kotlin, Jetpack Compose, Material 3, dark-first emergency UI, Gradle wrapper, real Bluetooth RFCOMM transport, Vokie service UUID filtering, discovery/discoverability, connector/server roles, compact binary protocol, persistence-before-ACK, Room message/peer/event storage, bounded persistent outbound queue, real text composer, CI/CD definitions, private S3 + CloudFront infrastructure, and static download website.
+- **IN PROGRESS:** Physical two-device interoperability and reconnect validation.
 - **PLANNED:** Local multilingual STT/VAD, local language-specific TTS models, Wi-Fi Direct fallback, relay, and ultrasonic transport.
 
 The application does not use DemoTransport, fake Bluetooth, fake STT, fake TTS, a backend, cloud communication, or simulated delivery states.
@@ -67,4 +67,4 @@ Never commit signing keystores, private keys, passwords, AWS access keys, or `lo
 
 ## Roadmap
 
-The immediate product priority is completing Room-backed persistence and queueing around the real Bluetooth transport, then local STT/TTS and two-phone testing. Wi-Fi Direct follows only after that core path is stable.
+The immediate product priority is physical two-phone validation of Bluetooth discovery, persistence, ACK, disconnect, and queue recovery. Local STT integration begins only after that communication foundation is stable. Wi-Fi Direct follows only after that core path is stable.

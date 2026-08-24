@@ -21,17 +21,18 @@ Cloud STT, cloud TTS, accounts, servers, and internet delivery are not used.
 - Compose Material 3 UI and Vokie design tokens
 - Android 7.0+ baseline (`minSdk 24`), target SDK 34
 - Contextual Nearby Devices permission request
-- Real Bluetooth RFCOMM peer service identity and discovery filtering
-- Bluetooth connection/server accept, framed message protocol, ACK handling and failure states
+- Real Bluetooth RFCOMM peer service identity, discoverability and discovery filtering
+- Connector/listener roles, compact binary message protocol, persistence-before-ACK and failure states
+- Room-backed message, peer and transport-event persistence with duplicate protection
+- Process-independent outbound queue with bounded retries and interrupted-send recovery
 - Gradle wrapper and reproducible debug build
 - CI and tag-triggered release workflow definitions
 - Private S3 + CloudFront OAC infrastructure definition and static download site
 
 ### IN PROGRESS
 
-- Room DAO/database wiring and persistent outbound queue
-- Text composer/send action connected to Bluetooth repository
-- Physical two-device interoperability testing
+- Physical two-device interoperability, disconnect and reconnect testing
+- Diagnostics presentation for persisted transport metrics
 
 ### PLANNED
 

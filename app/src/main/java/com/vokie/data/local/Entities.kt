@@ -7,6 +7,7 @@ import androidx.room.PrimaryKey
 data class MessageEntity(
     @PrimaryKey val id: String,
     val senderId: String,
+    val receiverId: String?,
     val timestamp: Long,
     val text: String,
     val language: String,
@@ -14,17 +15,36 @@ data class MessageEntity(
     val deliveryState: String,
     val transport: String?,
     val hopCount: Int,
+    val retryCount: Int,
+    val requiresAck: Boolean,
+    val lastError: String?,
 )
 
-@Entity(tableName = "contacts")
-data class ContactEntity(@PrimaryKey val id: String, val name: String, val phone: String, val isEmergency: Boolean)
+@Entity(tableName = "peers")
+data class PeerEntity(
+    @PrimaryKey val id: String,
+    val deviceAddress: String,
+    val deviceName: String,
+    val protocolVersion: Int,
+    val lastSeen: Long,
+    val connectionState: String,
+    val transport: String,
+    val isTrusted: Boolean,
+)
+
+@Entity(tableName = "transport_events")
+data class TransportEventEntity(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val timestamp: Long,
+    val transport: String,
+    val eventType: String,
+    val peerId: String?,
+    val messageId: String?,
+    val detail: String?,
+    val latencyMs: Long?,
+)
+
 @Entity(tableName = "emergency_alerts")
 data class EmergencyAlertEntity(@PrimaryKey val id: String, val severity: String, val title: String, val body: String, val timestamp: Long, val source: String, val status: String)
-@Entity(tableName = "offline_resources")
-data class OfflineResourceEntity(@PrimaryKey val id: String, val category: String, val title: String, val content: String, val downloaded: Boolean)
-@Entity(tableName = "map_regions")
-data class MapRegionEntity(@PrimaryKey val id: String, val name: String, val downloaded: Boolean, val updatedAt: Long)
-@Entity(tableName = "devices")
-data class DeviceEntity(@PrimaryKey val id: String, val name: String, val lastSeen: Long, val transport: String)
 @Entity(tableName = "app_settings")
 data class AppSettingsEntity(@PrimaryKey val id: Int = 1, val language: String, val walkieTalkieMode: Boolean, val darkMode: Boolean, val haptics: Boolean)

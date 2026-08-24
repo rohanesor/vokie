@@ -13,9 +13,12 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -24,13 +27,12 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.vokie.communication.BluetoothPermission
 import com.vokie.domain.model.*
 import com.vokie.ui.theme.*
-import kotlinx.coroutines.launch
+import com.vokie.ui.communication.CommunicationViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -77,15 +79,17 @@ fun AppHeader(title: String, eyebrow: String? = null) {
 }
 
 @Composable
-fun StatusStrip() {
+fun StatusStrip(vm: CommunicationViewModel = viewModel()) {
+    val bluetooth by vm.connectionState.collectAsState()
+    val bluetoothColor = if (bluetooth == TransportConnectionState.CONNECTED || bluetooth == TransportConnectionState.IDLE) VokieTheme.colors.success else VokieTheme.colors.textSecondary
     Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), shape = RoundedCornerShape(12.dp), modifier = Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp)) {
             Text("COMMUNICATION STATUS", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                StatusDot("Bluetooth", "READY", VokieTheme.colors.success)
-                StatusDot("Wi-Fi Direct", "READY", VokieTheme.colors.success)
-                StatusDot("Internet", "OFFLINE", VokieTheme.colors.textSecondary)
+                StatusDot("Bluetooth", bluetooth.name.replace('_', ' '), bluetoothColor)
+                StatusDot("Wi-Fi Direct", "NOT IMPLEMENTED", VokieTheme.colors.textSecondary)
+                StatusDot("Internet", "NOT REQUIRED", VokieTheme.colors.textSecondary)
             }
         }
     }
@@ -100,7 +104,7 @@ fun HomeScreen(onSpeak: () -> Unit, onSos: () -> Unit) {
     LazyColumn(contentPadding = PaddingValues(bottom = 18.dp), modifier = Modifier.fillMaxSize()) {
         item { AppHeader("Offline Emergency Communication", "Voice when networks fail.") }
         item { Column(Modifier.padding(horizontal = 20.dp)) { StatusStrip(); Spacer(Modifier.height(16.dp)) } }
-        item { Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) { Column(Modifier.padding(20.dp)) { Text("CURRENT STATUS", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Text("You are safe", style = VokieTheme.typography.headerSmall, color = VokieTheme.colors.success); Spacer(Modifier.height(8.dp)); Text("Vokie is operating in offline mode. Nearby communication is available.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) } } }
+        item { Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) { Column(Modifier.padding(20.dp)) { Text("CURRENT STATUS", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Text("You are safe", style = VokieTheme.typography.headerSmall, color = VokieTheme.colors.success); Spacer(Modifier.height(8.dp)); Text("Vokie operates without a backend. Open Communicate to discover and connect to a nearby Vokie peer.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) } } }
         item { Spacer(Modifier.height(22.dp)); PushToTalkButton(onClick = onSpeak); Text("Speak in your language. Vokie converts your speech to text and transmits it locally.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(horizontal = 36.dp, vertical = 14.dp)) }
         item { Text("Language  •  Tamil · தமிழ்", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
         item { Spacer(Modifier.height(18.dp)); SosButton(onClick = onSos) }
@@ -119,45 +123,69 @@ fun SosButton(onClick: () -> Unit) { Button(onClick = onClick, colors = ButtonDe
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SosSheet(onDismiss: () -> Unit) {
-    var confirmed by remember { mutableStateOf(false) }
+fun SosSheet(onDismiss: () -> Unit, vm: CommunicationViewModel = viewModel()) {
+    var message by rememberSaveable { mutableStateOf("I need emergency assistance.") }
+    val connectedPeer by vm.connectedPeerId.collectAsState()
     ModalBottomSheet(onDismissRequest = onDismiss, containerColor = VokieTheme.colors.surface) {
-        Column(Modifier.padding(24.dp).navigationBarsPadding()) { Text("SEND EMERGENCY SOS", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary); Spacer(Modifier.height(12.dp)); Text("Your phone will broadcast your emergency message and location to nearby Vokie devices.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary); Spacer(Modifier.height(18.dp)); Text("LOCATION    AVAILABLE", style = VokieTheme.typography.label, color = VokieTheme.colors.success); Text("TRANSPORT   Bluetooth  ·  Wi-Fi Direct", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 10.dp)); Spacer(Modifier.height(18.dp)); OutlinedTextField(value = "I need emergency assistance.", onValueChange = {}, label = { Text("Message") }, modifier = Modifier.fillMaxWidth(), minLines = 2); Spacer(Modifier.height(20.dp)); Button(onClick = { confirmed = true }, colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.alert), modifier = Modifier.fillMaxWidth().height(60.dp)) { Text(if (confirmed) "BROADCASTING…" else "HOLD TO BROADCAST", style = VokieTheme.typography.label) }; if (confirmed) { Spacer(Modifier.height(14.dp)); Text("Searching for nearby Vokie devices…\nBroadcasting through Bluetooth…", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) }; Spacer(Modifier.height(16.dp)); TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") } }
-    }
-}
-
-@Composable
-fun CommunicateScreen() {
-    val context = androidx.compose.ui.platform.LocalContext.current
-    val transport = (context.applicationContext as VokieApplication).bluetoothTransport
-    val peers by transport.peers.collectAsState()
-    val state by transport.connectionState.collectAsState()
-    var error by remember { mutableStateOf<String?>(null) }
-    val scope = rememberCoroutineScope()
-    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
-        if (result.values.all { it }) scope.launch { runCatching { transport.discoverPeers() }.onFailure { error = it.message } }
-        else error = "Nearby Devices permission is required to discover and communicate with nearby Vokie phones."
-    }
-    Column(Modifier.fillMaxSize()) {
-        AppHeader("Communicate", "Real nearby-device communication")
-        Column(Modifier.padding(horizontal = 20.dp)) {
-            StatusStrip(); Spacer(Modifier.height(16.dp))
-            Text("BLUETOOTH STATUS  •  ${state.name}", style = VokieTheme.typography.labelSmall, color = if (state == TransportConnectionState.FAILED) VokieTheme.colors.alert else VokieTheme.colors.textSecondary)
-            Spacer(Modifier.height(12.dp))
-            Button(onClick = { if (BluetoothPermission.hasDiscovery(context)) scope.launch { runCatching { transport.discoverPeers() }.onFailure { error = it.message } } else permissions.launch(BluetoothPermission.discoveryPermissions()) }, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.surface)) { Icon(Icons.Default.Search, null); Spacer(Modifier.width(8.dp)); Text(if (state == TransportConnectionState.SEARCHING) "SEARCHING…" else "FIND NEARBY DEVICES") }
-            Spacer(Modifier.height(14.dp))
-            if (peers.isEmpty()) Text(if (state == TransportConnectionState.SEARCHING) "Searching for Vokie-compatible Bluetooth devices…" else "No nearby Vokie device detected.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary)
-            peers.forEach { peer -> Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Bluetooth, null, tint = VokieTheme.colors.textSecondary); Column(Modifier.weight(1f).padding(horizontal = 10.dp)) { Text(peer.name, style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary); Text(if (peer.bonded) "PAIRED  •  ${peer.address}" else peer.address, style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary) }; Button(onClick = { if (BluetoothPermission.hasConnection(context)) scope.launch { runCatching { transport.connect(peer.id) }.onFailure { error = it.message } } else permissions.launch(BluetoothPermission.connectionPermissions()) }, modifier = Modifier.heightIn(min = 48.dp)) { Text("CONNECT") } } } }
-            error?.let { Text(it, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(vertical = 12.dp)) }
-            Spacer(Modifier.height(18.dp)); Text("VOICE INPUT", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Spacer(Modifier.height(10.dp))
-            PushToTalkButton { error = "Speech recognition is not installed yet. No audio was captured or transmitted." }
-            Spacer(Modifier.height(14.dp)); Text("Speech recognition is unavailable until the local STT engine is installed. Vokie will not pretend to transcribe speech.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary)
+        Column(Modifier.padding(24.dp).navigationBarsPadding()) {
+            Text("SEND EMERGENCY SOS", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary)
+            Spacer(Modifier.height(12.dp)); Text("This creates a real local SOS message. It is transmitted to the connected Vokie peer, or safely queued until a peer connects.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary)
+            Spacer(Modifier.height(18.dp)); Text("TRANSPORT   ${if (connectedPeer == null) "NO PEER — WILL QUEUE" else "BLUETOOTH CONNECTED"}", style = VokieTheme.typography.label, color = if (connectedPeer == null) VokieTheme.colors.textSecondary else VokieTheme.colors.success)
+            Spacer(Modifier.height(18.dp)); OutlinedTextField(value = message, onValueChange = { if (it.length <= com.vokie.communication.VokieProtocol.MAX_TEXT_CHARS) message = it }, label = { Text("Emergency message") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+            Spacer(Modifier.height(20.dp)); Button(onClick = { vm.send(message, type = MessageType.SOS, onQueued = onDismiss) }, enabled = message.isNotBlank(), colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.alert), modifier = Modifier.fillMaxWidth().height(60.dp)) { Text(if (connectedPeer == null) "QUEUE SOS" else "SEND SOS", style = VokieTheme.typography.label) }
+            Spacer(Modifier.height(16.dp)); TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) { Text("Cancel") }
         }
     }
 }
 
 @Composable
-fun MessageBubble(message: Message) { Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("YOU", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Text("“${message.text}”", style = VokieTheme.typography.bodyLarge, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(vertical = 10.dp)); Text("Tamil  •  Bluetooth  •  ${message.hopCount} hop", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary); Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 10.dp)) { Icon(Icons.Default.CheckCircle, null, Modifier.size(18.dp), tint = VokieTheme.colors.success); Spacer(Modifier.width(6.dp)); Text("Received by peer", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.success) } } } }
+fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val peers by vm.peers.collectAsState()
+    val state by vm.connectionState.collectAsState()
+    val connectedPeer by vm.connectedPeerId.collectAsState()
+    val messages by vm.messages.collectAsState()
+    val error by vm.error.collectAsState()
+    var composer by rememberSaveable { mutableStateOf("") }
+    var pendingPeer by remember { mutableStateOf<String?>(null) }
+    var pendingVisibility by remember { mutableStateOf(false) }
+    val discoverability = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == android.app.Activity.RESULT_CANCELED) vm.reportError("This phone was not made visible. It can still connect to already discovered peers.")
+    }
+    val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
+        if (result.values.all { it }) when { pendingVisibility -> { pendingVisibility = false; vm.startListening(); discoverability.launch(vm.discoverabilityRequest()) }; pendingPeer != null -> pendingPeer?.let(vm::connect); else -> vm.discover() }
+        else { vm.reportError("Nearby Devices permission is required to discover and communicate with nearby Vokie phones."); pendingPeer = null; pendingVisibility = false }
+    }
+    LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
+        item { AppHeader("Communicate", "Bluetooth text communication") }
+        item { Column(Modifier.padding(horizontal = 20.dp)) {
+            Text("BLUETOOTH  •  ${state.name.replace('_', ' ')}", style = VokieTheme.typography.labelSmall, color = if (state == TransportConnectionState.FAILED || state == TransportConnectionState.BLUETOOTH_DISABLED || state == TransportConnectionState.PERMISSION_REQUIRED) VokieTheme.colors.alert else VokieTheme.colors.textSecondary)
+            connectedPeer?.let { Text("CONNECTED PEER  •  $it", style = VokieTheme.typography.caption, color = VokieTheme.colors.success, modifier = Modifier.padding(top = 6.dp)) }
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = { pendingVisibility = true; pendingPeer = null; if (BluetoothPermission.hasDiscoverability(context)) { vm.startListening(); discoverability.launch(vm.discoverabilityRequest()) } else permissions.launch(BluetoothPermission.discoverabilityPermissions()) }, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.surface)) { Icon(Icons.Default.Visibility, null); Spacer(Modifier.width(8.dp)); Text("MAKE THIS PHONE VISIBLE") }
+            Spacer(Modifier.height(8.dp))
+            Button(onClick = { pendingVisibility = false; pendingPeer = null; if (BluetoothPermission.hasDiscovery(context)) vm.discover() else permissions.launch(BluetoothPermission.discoveryPermissions()) }, enabled = state != TransportConnectionState.SEARCHING, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.surface)) { Icon(Icons.Default.Search, null); Spacer(Modifier.width(8.dp)); Text(if (state == TransportConnectionState.SEARCHING) "SEARCHING…" else "FIND NEARBY VOKIE DEVICES") }
+            if (state == TransportConnectionState.SEARCHING) TextButton(onClick = vm::stopDiscovery, modifier = Modifier.fillMaxWidth()) { Text("STOP DISCOVERY") }
+            if (peers.isEmpty()) Text(if (state == TransportConnectionState.SEARCHING) "Searching for protocol-compatible devices…" else "No nearby Vokie device detected.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(vertical = 12.dp))
+        } }
+        items(peers, key = { it.id }) { peer -> Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.padding(horizontal = 20.dp, vertical = 4.dp).fillMaxWidth()) { Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Default.Bluetooth, null, tint = VokieTheme.colors.textSecondary); Column(Modifier.weight(1f).padding(horizontal = 10.dp)) { Text(peer.name, style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary); Text("${if (peer.bonded) "PAIRED  •  " else ""}${peer.address}${peer.rssi?.let { "  •  $it dBm" } ?: ""}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary) }; Button(onClick = { pendingPeer = peer.id; if (BluetoothPermission.hasConnection(context)) vm.connect(peer.id) else permissions.launch(BluetoothPermission.connectionPermissions()) }, enabled = connectedPeer != peer.id, modifier = Modifier.heightIn(min = 48.dp)) { Text(if (connectedPeer == peer.id) "CONNECTED" else "CONNECT") } } } }
+        item { Column(Modifier.padding(20.dp)) {
+            error?.let { Text(it, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(bottom = 10.dp)) }
+            Text("MESSAGE", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary)
+            OutlinedTextField(value = composer, onValueChange = { if (it.length <= com.vokie.communication.VokieProtocol.MAX_TEXT_CHARS) composer = it }, label = { Text("Message text") }, supportingText = { Text("${composer.length}/${com.vokie.communication.VokieProtocol.MAX_TEXT_CHARS}") }, modifier = Modifier.fillMaxWidth(), minLines = 2)
+            Button(onClick = { vm.send(composer, onQueued = { composer = "" }) }, enabled = composer.isNotBlank(), modifier = Modifier.fillMaxWidth().height(56.dp).padding(top = 8.dp)) { Icon(Icons.AutoMirrored.Filled.Send, null); Spacer(Modifier.width(8.dp)); Text(if (connectedPeer == null) "QUEUE MESSAGE" else "SEND MESSAGE") }
+            Text(if (connectedPeer == null) "No peer is connected. Messages are persisted and remain queued." else "Messages are persisted before transmission and marked received only after peer ACK.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 10.dp))
+            Spacer(Modifier.height(20.dp)); Text("MESSAGES", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary)
+        } }
+        items(messages, key = { it.id }) { message -> Box(Modifier.padding(horizontal = 20.dp, vertical = 5.dp)) { MessageBubble(message, onRetry = { vm.retry(message.id) }) } }
+    }
+}
+
+@Composable
+fun MessageBubble(message: Message, onRetry: () -> Unit) {
+    val statusColor = if (message.deliveryState == DeliveryState.RECEIVED_BY_PEER) VokieTheme.colors.success else if (message.deliveryState == DeliveryState.FAILED) VokieTheme.colors.alert else VokieTheme.colors.textSecondary
+    Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("FROM  •  ${message.senderId.take(16)}", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Text(message.text, style = VokieTheme.typography.bodyLarge, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(vertical = 10.dp)); Text("${message.language}  •  ${message.transport?.name ?: "WAITING FOR TRANSPORT"}  •  ${message.hopCount} hop", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary); Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 10.dp)) { Icon(if (message.deliveryState == DeliveryState.FAILED) Icons.Default.Error else Icons.Default.Info, null, Modifier.size(18.dp), tint = statusColor); Spacer(Modifier.width(6.dp)); Text(message.deliveryState.name.replace('_', ' '), style = VokieTheme.typography.labelSmall, color = statusColor); if (message.retryCount > 0) Text("  •  Retry ${message.retryCount}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary) }; message.lastError?.let { Text(it, style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp)) }; if (message.deliveryState == DeliveryState.FAILED) TextButton(onClick = onRetry) { Text("RETRY") } } }
+}
 
 @Composable
 fun MapScreen() { Column(Modifier.fillMaxSize()) { AppHeader("Map", "Offline-first safety map"); Column(Modifier.padding(horizontal = 20.dp)) { Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.fillMaxWidth().height(310.dp)) { Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.Map, null, Modifier.size(48.dp), tint = VokieTheme.colors.textSecondary); Text("MAP AVAILABLE OFFLINE", style = VokieTheme.typography.label, color = VokieTheme.colors.success, modifier = Modifier.padding(top = 12.dp)); Text("Tamil Nadu region  •  Updated locally", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) } } }; Spacer(Modifier.height(18.dp)); Button(onClick = {}, modifier = Modifier.fillMaxWidth().height(56.dp), colors = ButtonDefaults.buttonColors(containerColor = VokieTheme.colors.surface)) { Icon(Icons.Default.Download, null); Spacer(Modifier.width(8.dp)); Text("Download Region") }; Spacer(Modifier.height(20.dp)); Text("MAP LEGEND", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Text("●  Current location    +  Shelters    ✚  Hospitals    !  Hazard zones", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 10.dp)) } } }
