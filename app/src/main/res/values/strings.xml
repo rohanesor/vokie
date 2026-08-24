@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Vokie</string>
+    <string name="app_tagline">Voice when networks fail.</string>
+    <string name="app_subtitle">Offline Emergency Communication</string>
+</resources>
