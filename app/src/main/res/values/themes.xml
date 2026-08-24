@@ -4,4 +4,10 @@
         <item name="android:navigationBarColor">#111111</item>
         <item name="android:windowBackground">#111111</item>
     </style>
+
+    <style name="Theme.Vokie.Starting" parent="Theme.SplashScreen">
+        <item name="windowSplashScreenBackground">@color/vokie_bg_base</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/vokie_logo_adaptive</item>
+        <item name="postSplashScreenTheme">@style/Theme.Vokie</item>
+    </style>
 </resources>

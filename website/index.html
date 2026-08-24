@@ -5,12 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#111111">
   <meta name="description" content="Vokie — offline-first emergency communication for when networks fail.">
+  <meta property="og:title" content="Vokie — Voice when networks fail.">
+  <meta property="og:description" content="Offline multilingual emergency communication for Android.">
+  <meta property="og:image" content="/assets/vokie-social-preview.png">
+  <meta property="og:type" content="website">
   <title>Vokie — Voice when networks fail</title>
+  <link rel="icon" type="image/png" href="assets/favicon.png">
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header class="site-header">
-    <a class="wordmark" href="/" aria-label="Vokie home">VOKIE</a>
+    <a class="header-brand" href="/" aria-label="Vokie home"><img src="assets/vokie-logo.png" alt=""><span class="wordmark">VOKIE</span></a>
     <nav aria-label="Primary navigation">
       <a href="#release">Release</a>
       <a href="#install">Install</a>
@@ -20,12 +26,15 @@
 
   <main>
     <section class="hero" aria-labelledby="hero-title">
-      <p class="eyebrow">OFFLINE EMERGENCY COMMUNICATION</p>
+      <img class="hero-logo" src="assets/vokie-logo.png" width="144" height="144" alt="Official Vokie network communication symbol">
+      <p class="hero-wordmark">VOKIE</p>
+      <p class="eyebrow">OFFLINE MULTILINGUAL EMERGENCY COMMUNICATION FOR ANDROID</p>
       <h1 id="hero-title">Voice when<br><span>networks fail.</span></h1>
       <p class="lead">Offline-first multilingual communication designed for emergency situations when conventional networks are unavailable.</p>
       <div class="hero-actions">
         <a id="download-button" class="button button-alert" href="#release">DOWNLOAD VOKIE</a>
         <a class="button button-outline" href="https://github.com/rohanesor/vokie/releases">RELEASE NOTES</a>
+        <a class="button button-outline" href="https://github.com/rohanesor/vokie">SOURCE CODE</a>
       </div>
       <p class="availability" id="availability" role="status">Release information loads from this deployment.</p>
     </section>
@@ -41,7 +50,7 @@
       <h2 id="features-title">Built for the moment<br>ordinary networks stop.</h2>
       <div class="feature-grid">
         <article class="feature"><span class="feature-index">01</span><h3>OFFLINE-FIRST</h3><p>The communication foundation is designed to operate without a backend or cloud connection.</p></article>
-        <article class="feature"><span class="feature-index">02</span><h3>BLUETOOTH</h3><p>Real Vokie peer discovery and RFCOMM transport are being built for nearby communication.</p></article>
+        <article class="feature"><span class="feature-index">02</span><h3>BLUETOOTH</h3><p>Real Vokie peer discovery, RFCOMM transport, acknowledgement, persistence, and offline queue foundations are implemented.</p></article>
         <article class="feature"><span class="feature-index">03</span><h3>LOCAL PROCESSING</h3><p>Speech recognition and voice playback are planned as on-device components, never cloud services.</p></article>
         <article class="feature"><span class="feature-index">04</span><h3>LOW-END READY</h3><p>Clear controls, high contrast, and a restrained interface designed with low-memory phones in mind.</p></article>
       </div>

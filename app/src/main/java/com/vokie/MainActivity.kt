@@ -5,6 +5,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -25,6 +27,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
@@ -36,6 +39,7 @@ import com.vokie.ui.communication.CommunicationViewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         setContent { VokieTheme { VokieApp() } }
     }
@@ -102,13 +106,22 @@ fun StatusStrip(vm: CommunicationViewModel = viewModel()) {
 @Composable
 fun HomeScreen(onSpeak: () -> Unit, onSos: () -> Unit) {
     LazyColumn(contentPadding = PaddingValues(bottom = 18.dp), modifier = Modifier.fillMaxSize()) {
-        item { AppHeader("Offline Emergency Communication", "Voice when networks fail.") }
+        item { BrandHero() }
         item { Column(Modifier.padding(horizontal = 20.dp)) { StatusStrip(); Spacer(Modifier.height(16.dp)) } }
         item { Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), shape = RoundedCornerShape(14.dp), modifier = Modifier.padding(horizontal = 20.dp).fillMaxWidth()) { Column(Modifier.padding(20.dp)) { Text("CURRENT STATUS", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary); Text("You are safe", style = VokieTheme.typography.headerSmall, color = VokieTheme.colors.success); Spacer(Modifier.height(8.dp)); Text("Vokie operates without a backend. Open Communicate to discover and connect to a nearby Vokie peer.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) } } }
         item { Spacer(Modifier.height(22.dp)); PushToTalkButton(onClick = onSpeak); Text("Speak in your language. Vokie converts your speech to text and transmits it locally.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(horizontal = 36.dp, vertical = 14.dp)) }
         item { Text("Language  •  Tamil · தமிழ்", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) }
         item { Spacer(Modifier.height(18.dp)); SosButton(onClick = onSos) }
         item { Text("BLUETOOTH ONLY  •  Real peer communication", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textMuted, modifier = Modifier.padding(20.dp)) }
+    }
+}
+
+@Composable
+fun BrandHero() {
+    Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+        Image(painter = painterResource(R.drawable.vokie_logo), contentDescription = "Official Vokie logo", modifier = Modifier.size(76.dp))
+        Spacer(Modifier.width(16.dp))
+        Column { Text("VOKIE", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary); Text("Voice when networks fail.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary); Text("Offline Emergency Communication", style = VokieTheme.typography.caption, color = VokieTheme.colors.textMuted) }
     }
 }
 
@@ -194,7 +207,23 @@ fun MapScreen() { Column(Modifier.fillMaxSize()) { AppHeader("Map", "Offline-fir
 fun AlertsScreen() { val alerts = listOf("Flood Warning" to "Water level rising near your area.", "Shelter Open" to "Community shelter open at Government School.", "Road Closure" to "Avoid the east bridge. Use marked safe routes."); LazyColumn(contentPadding = PaddingValues(bottom = 20.dp)) { item { AppHeader("Alerts", "Chronological emergency feed") }; items(alerts) { (title, body) -> Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.padding(horizontal = 20.dp, vertical = 6.dp).fillMaxWidth()) { Column(Modifier.padding(16.dp)) { Text("CRITICAL", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.alert); Text(title, style = VokieTheme.typography.headerSmall, color = VokieTheme.colors.textPrimary); Text(body, style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(vertical = 8.dp)); Text("12 min ago  •  Local authority  •  ACTIVE", style = VokieTheme.typography.caption, color = VokieTheme.colors.textMuted) } } } } }
 
 @Composable
-fun MoreScreen() { LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) { item { AppHeader("More", "Tools for staying safe offline") }; item { MoreSection("CONTACTS / CHECK-IN", listOf("Emergency Contacts", "MARK ME SAFE", "Broadcast Safe Status")) }; item { MoreSection("OFFLINE RESOURCES", listOf("First Aid", "Flood", "Fire", "Earthquake", "Evacuation", "Emergency Communication")) }; item { MoreSection("SETTINGS", listOf("Language", "Communication Mode", "Bluetooth", "Wi-Fi Direct", "Ultrasonic", "Offline Map Storage", "Accessibility", "Dark / Light Mode", "Haptic Feedback", "Voice Settings", "About Vokie")) }; item { Text("Offline Mode\nAll communication processing occurs on this device.\n\nVoice when networks fail.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(20.dp)) } } }
+fun MoreScreen() { LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) { item { AppHeader("More", "Tools for staying safe offline") }; item { MoreSection("CONTACTS / CHECK-IN", listOf("Emergency Contacts", "MARK ME SAFE", "Broadcast Safe Status")) }; item { MoreSection("OFFLINE RESOURCES", listOf("First Aid", "Flood", "Fire", "Earthquake", "Evacuation", "Emergency Communication")) }; item { MoreSection("SETTINGS", listOf("Language", "Communication Mode", "Bluetooth", "Wi-Fi Direct", "Ultrasonic", "Offline Map Storage", "Accessibility", "Dark / Light Mode", "Haptic Feedback", "Voice Settings")) }; item { AboutCard() } } }
+
+@Composable
+fun AboutCard() {
+    Card(colors = CardDefaults.cardColors(containerColor = VokieTheme.colors.surface), border = androidx.compose.foundation.BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.padding(20.dp).fillMaxWidth()) {
+        Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(painter = painterResource(R.drawable.vokie_logo), contentDescription = "Official Vokie logo", modifier = Modifier.size(96.dp))
+            Spacer(Modifier.height(12.dp)); Text("VOKIE", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary)
+            Text("Voice when networks fail.", style = VokieTheme.typography.label, color = VokieTheme.colors.textSecondary)
+            Text("Offline multilingual emergency communication.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
+            HorizontalDivider(Modifier.padding(vertical = 16.dp), color = VokieTheme.colors.border)
+            Text("Version ${BuildConfig.VERSION_NAME}", style = VokieTheme.typography.body, color = VokieTheme.colors.textPrimary)
+            Text("Open Source  •  Offline-first", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp))
+            Text("Bluetooth — Implemented\nWi-Fi Direct — Planned", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 12.dp).align(Alignment.Start))
+        }
+    }
+}
 
 @Composable
 fun MoreSection(title: String, items: List<String>) { Column(Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) { Text(title, style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(vertical = 8.dp)); items.forEach { item -> Surface(color = VokieTheme.colors.surface, shape = RoundedCornerShape(8.dp), modifier = Modifier.fillMaxWidth().padding(vertical = 2.dp)) { Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) { Text(item, style = VokieTheme.typography.body, color = VokieTheme.colors.textPrimary); Icon(Icons.Default.ChevronRight, null, tint = VokieTheme.colors.textMuted) } } } } }
