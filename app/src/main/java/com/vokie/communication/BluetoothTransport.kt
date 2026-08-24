@@ -13,6 +13,7 @@ import androidx.core.content.IntentCompat
 import com.vokie.domain.model.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.withContext
@@ -36,6 +37,8 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     private var serverSocket: android.bluetooth.BluetoothServerSocket? = null
     private var acceptJob: Job? = null
     private var connectionJob: Job? = null
+    private var reconnectJob: Job? = null
+    private var manuallyDisconnected = false
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
     private var receiverRegistered = false
@@ -106,6 +109,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
 
     @SuppressLint("MissingPermission")
     override suspend fun connect(peerId: String) = withContext(Dispatchers.IO) {
+        manuallyDisconnected = false
         check(BluetoothPermission.hasConnection(context)) { "Nearby Devices permission is required." }
         val bt = adapter ?: error("Bluetooth is not available on this phone")
         if (!bt.isEnabled) error("Turn on Bluetooth to communicate.")
@@ -120,10 +124,10 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
             _state.value = TransportConnectionState.CONNECTED
             VokieLog.bt("Connection established: $peerId")
             listenForFrames()
-        } catch (t: Throwable) { closeSocket(); _state.value = TransportConnectionState.FAILED; VokieLog.bt("Connection failed: ${t.message}"); throw IOException("Connection failed", t) }
+        } catch (t: Throwable) { closeSocket(); _state.value = TransportConnectionState.FAILED; VokieLog.bt("Connection failed: ${t.message}"); scheduleReconnect(peerId); throw IOException("Connection failed", t) }
     }
 
-    override suspend fun disconnect() = withContext(Dispatchers.IO) { closeSocket(); closeServer(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Disconnected") }
+    override suspend fun disconnect() = withContext(Dispatchers.IO) { manuallyDisconnected = true; reconnectJob?.cancel(); reconnectJob = null; closeSocket(); closeServer(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Disconnected") }
 
     override suspend fun send(message: Message): SendResult = withContext(Dispatchers.IO) {
         val stream = output ?: return@withContext SendResult(message.id, false, error = "No connected Vokie device")
@@ -160,7 +164,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
-            } catch (t: Throwable) { if (connectionState.value == TransportConnectionState.CONNECTED) { closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Connection lost: ${t.message}") } }
+            } catch (t: Throwable) { if (connectionState.value == TransportConnectionState.CONNECTED) { val lostPeer = _connectedPeerId.value; closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Connection lost: ${t.message}"); lostPeer?.let(::scheduleReconnect) } }
         }
     }
 
@@ -177,12 +181,25 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                     val accepted = serverSocket?.accept() ?: break
                     closeSocket()
                     socket = accepted; input = DataInputStream(accepted.inputStream); output = DataOutputStream(accepted.outputStream)
+                    manuallyDisconnected = false
                     _connectedPeerId.value = accepted.remoteDevice.address
                     _state.value = TransportConnectionState.CONNECTED
                     VokieLog.bt("Incoming Vokie connection established")
                     listenForFrames()
                 }
             }.onFailure { if (_state.value != TransportConnectionState.CONNECTED) VokieLog.bt("Server stopped: ${it.message}") }
+        }
+    }
+
+    private fun scheduleReconnect(peerId: String) {
+        if (manuallyDisconnected || reconnectJob?.isActive == true) return
+        reconnectJob = scope.launch(Dispatchers.IO) {
+            repeat(RetryPolicy.MAX_RETRIES) { attempt ->
+                delay(RetryPolicy.delayMillis(attempt + 1))
+                if (manuallyDisconnected || adapter?.isEnabled != true) return@launch
+                if (runCatching { connect(peerId) }.isSuccess) { VokieLog.bt("Reconnected: $peerId"); return@launch }
+            }
+            VokieLog.bt("Reconnect limit reached: $peerId")
         }
     }
 
