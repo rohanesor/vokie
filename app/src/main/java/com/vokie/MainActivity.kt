@@ -317,6 +317,7 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     val messages by vm.messages.collectAsState()
     val error by vm.error.collectAsState()
     val bt = bluetoothUi(state)
+    DisposableEffect(vm) { onDispose { vm.stopDiscovery() } }
     var composer by rememberSaveable { mutableStateOf("") }
     var pendingPeer by remember { mutableStateOf<String?>(null) }
     var pendingVisibility by remember { mutableStateOf(false) }

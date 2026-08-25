@@ -14,8 +14,9 @@ class RoomMessageRepositoryTest {
         val dao = MemoryMessageDao(); val repository = RoomMessageRepository(dao)
         val message = repository.createMessage("Hello from Vokie", "sender", "peer", VokieLanguage.EN)
         assertEquals(DeliveryState.QUEUED, repository.getMessage(message.id)?.deliveryState)
-        repository.markTransmitting(message.id)
+        repository.markTransmitting(message.id, TransportType.BLUETOOTH)
         assertEquals(DeliveryState.TRANSMITTING, repository.getMessage(message.id)?.deliveryState)
+        assertEquals(TransportType.BLUETOOTH, repository.getMessage(message.id)?.transport)
         assertEquals(1, repository.incrementRetry(message.id, "ACK timeout"))
         assertEquals(DeliveryState.RETRYING, repository.getMessage(message.id)?.deliveryState)
         repository.markFailed(message.id, "Retry limit reached")
@@ -44,6 +45,7 @@ private class MemoryMessageDao : MessageDao {
     override suspend fun insert(entity: MessageEntity): Long { if (find(entity.id) != null) return -1; rows.value = rows.value + entity; return rows.value.size.toLong() }
     override suspend fun update(entity: MessageEntity) { rows.value = rows.value.map { if (it.id == entity.id) entity else it } }
     override suspend fun setState(id: String, state: String, error: String?) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = state, lastError = error) else it } }
+    override suspend fun markTransmitting(id: String, transport: String) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = "TRANSMITTING", transport = transport, lastError = null) else it } }
     override suspend fun incrementRetry(id: String, state: String, error: String) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = state, retryCount = it.retryCount + 1, lastError = error) else it } }
     override suspend fun resetForManualRetry(id: String) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = "QUEUED", retryCount = 0, lastError = null) else it } }
     override suspend fun recoverInterrupted() { rows.value = rows.value.map { if (it.deliveryState == "TRANSMITTING") it.copy(deliveryState = "QUEUED") else it } }

@@ -39,6 +39,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     private var connectionJob: Job? = null
     private var reconnectJob: Job? = null
     private var manuallyDisconnected = false
+    @Volatile private var reconnectPeerId: String? = null
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
     private var receiverRegistered = false
@@ -67,8 +68,20 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> if (_state.value == TransportConnectionState.SEARCHING) _state.value = TransportConnectionState.IDLE
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
                     when (intent.getIntExtra(BluetoothAdapter.EXTRA_STATE, BluetoothAdapter.ERROR)) {
-                        BluetoothAdapter.STATE_OFF -> { closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.BLUETOOTH_DISABLED }
-                        BluetoothAdapter.STATE_ON -> _state.value = if (BluetoothPermission.hasConnection(context)) TransportConnectionState.IDLE else TransportConnectionState.PERMISSION_REQUIRED
+                        BluetoothAdapter.STATE_OFF -> {
+                            reconnectJob?.cancel(); reconnectJob = null
+                            closeSocket(); closeServer(); _connectedPeerId.value = null
+                            _state.value = TransportConnectionState.BLUETOOTH_DISABLED
+                        }
+                        BluetoothAdapter.STATE_ON -> {
+                            if (BluetoothPermission.hasConnection(context)) {
+                                adapter?.let(::startServer)
+                                _state.value = TransportConnectionState.IDLE
+                                if (!manuallyDisconnected) reconnectPeerId?.let(::scheduleReconnect)
+                            } else {
+                                _state.value = TransportConnectionState.PERMISSION_REQUIRED
+                            }
+                        }
                     }
                 }
             }
@@ -114,6 +127,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
         val bt = adapter ?: error("Bluetooth is not available on this phone")
         if (!bt.isEnabled) error("Turn on Bluetooth to communicate.")
         val device = bt.getRemoteDevice(peerId)
+        reconnectPeerId = peerId
         _state.value = TransportConnectionState.CONNECTING
         if (bt.isDiscovering) bt.cancelDiscovery()
         closeSocket()
@@ -127,7 +141,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
         } catch (t: Throwable) { closeSocket(); _state.value = TransportConnectionState.FAILED; VokieLog.bt("Connection failed: ${t.message}"); scheduleReconnect(peerId); throw IOException("Connection failed", t) }
     }
 
-    override suspend fun disconnect() = withContext(Dispatchers.IO) { manuallyDisconnected = true; reconnectJob?.cancel(); reconnectJob = null; closeSocket(); closeServer(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Disconnected") }
+    override suspend fun disconnect() = withContext(Dispatchers.IO) { manuallyDisconnected = true; reconnectPeerId = null; reconnectJob?.cancel(); reconnectJob = null; closeSocket(); closeServer(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Disconnected") }
 
     override suspend fun send(message: Message): SendResult = withContext(Dispatchers.IO) {
         val stream = output ?: return@withContext SendResult(message.id, false, error = "No connected Vokie device")
@@ -164,7 +178,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
-            } catch (t: Throwable) { if (connectionState.value == TransportConnectionState.CONNECTED) { val lostPeer = _connectedPeerId.value; closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Connection lost: ${t.message}"); lostPeer?.let(::scheduleReconnect) } }
+            } catch (t: Throwable) { if (connectionState.value == TransportConnectionState.CONNECTED) { closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Connection lost: ${t.message}"); reconnectPeerId?.let(::scheduleReconnect) } }
         }
     }
 
@@ -182,6 +196,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                     closeSocket()
                     socket = accepted; input = DataInputStream(accepted.inputStream); output = DataOutputStream(accepted.outputStream)
                     manuallyDisconnected = false
+                    reconnectPeerId = null
                     _connectedPeerId.value = accepted.remoteDevice.address
                     _state.value = TransportConnectionState.CONNECTED
                     VokieLog.bt("Incoming Vokie connection established")
