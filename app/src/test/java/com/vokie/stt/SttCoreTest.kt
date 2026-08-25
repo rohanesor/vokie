@@ -27,6 +27,9 @@ class SttCoreTest {
 
     @Test fun stateMachineAllowsRealPipelineAndRejectsFabricatedResult() {
         val machine = SttStateMachine()
+        machine.moveTo(SttState.MODEL_MISSING)
+        machine.moveTo(SttState.IMPORTING)
+        machine.moveTo(SttState.VALIDATING)
         machine.moveTo(SttState.INITIALIZING)
         machine.moveTo(SttState.READY)
         machine.moveTo(SttState.LISTENING)

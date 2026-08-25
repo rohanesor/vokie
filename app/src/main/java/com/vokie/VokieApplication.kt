@@ -5,6 +5,9 @@ import com.vokie.communication.*
 import com.vokie.data.RoomMessageRepository
 import com.vokie.data.local.*
 import com.vokie.domain.model.TransportType
+import com.vokie.map.MapPackManager
+import com.vokie.map.MapPreferences
+import com.vokie.map.OfflineMapUseCase
 import com.vokie.stt.SpeechToTextUseCase
 import com.vokie.stt.SttLanguagePreferences
 import com.vokie.stt.SttState
@@ -29,6 +32,8 @@ class VokieApplication : Application() {
     lateinit var speechToText: SpeechToTextUseCase; private set
     lateinit var ttsEngine: SherpaOnnxTtsEngine; private set
     lateinit var textToSpeech: TextToSpeechUseCase; private set
+    lateinit var offlineMap: OfflineMapUseCase; private set
+    lateinit var communicationPreferences: CommunicationPreferences; private set
     lateinit var deviceId: String; private set
 
     override fun onCreate() {
@@ -51,6 +56,11 @@ class VokieApplication : Application() {
         ttsEngine = SherpaOnnxTtsEngine(ttsModels, VokieAudioPlayer(applicationContext))
         val ttsQueue = TtsPlaybackQueue(ttsEngine, ttsSpeed, applicationScope)
         textToSpeech = TextToSpeechUseCase(ttsEngine, ttsModels, ttsPreferences, ttsQueue).also { it.start() }
+        communicationPreferences = CommunicationPreferences(applicationContext)
+        val mapManager = MapPackManager(applicationContext)
+        val mapPreferences = MapPreferences(applicationContext)
+        offlineMap = OfflineMapUseCase(applicationContext, mapManager, mapPreferences)
+        applicationScope.launch { offlineMap.refresh() }
 
         applicationScope.launch {
             transportManager.incomingMessages().collect { message ->

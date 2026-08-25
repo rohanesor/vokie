@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vokie.VokieApplication
+import com.vokie.communication.CommunicationPreferences
 import com.vokie.domain.model.*
 import com.vokie.stt.SttLanguage
 import com.vokie.stt.SttStatus
@@ -18,6 +19,10 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     private val manager = app.transportManager
     private val speechToText = app.speechToText
     private val textToSpeech = app.textToSpeech
+    private val communicationPreferences = app.communicationPreferences
+
+    val pushToTalkEnabled: StateFlow<Boolean> = communicationPreferences.pushToTalkEnabled
+        .stateIn(viewModelScope, SharingStarted.Eagerly, true)
 
     val messages: StateFlow<List<Message>> = repository.observeMessages()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -61,6 +66,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun stopTts() = action { textToSpeech.stop() }
     fun acknowledgeSos(messageId: String) = action { textToSpeech.acknowledgeSos(messageId) }
     fun isIncoming(message: Message) = message.senderId != app.deviceId
+    fun setPushToTalk(enabled: Boolean) = action { communicationPreferences.setPushToTalk(enabled) }
     fun retry(messageId: String) = action { repository.retry(messageId) }
     fun clearError() { _error.value = null }
     fun reportError(message: String) { _error.value = message }

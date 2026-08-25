@@ -55,7 +55,7 @@ object WhisperTinyMultilingualQ5_1 : SttModel {
     override fun localFile(context: Context) = File(File(context.filesDir, "stt-models"), fileName)
 }
 
-enum class SttState { UNINITIALIZED, INITIALIZING, READY, LISTENING, PROCESSING, RESULT, ERROR, MODEL_MISSING }
+enum class SttState { UNINITIALIZED, MODEL_MISSING, IMPORTING, VALIDATING, INITIALIZING, READY, LISTENING, PROCESSING, RESULT, ERROR }
 enum class VadState { WAITING_FOR_SPEECH, SPEECH_DETECTED, RECORDING, SILENCE_DETECTED, TRANSCRIBING, TEXT_READY }
 enum class SttErrorCode {
     MODEL_MISSING, MODEL_LOAD_FAILED, MIC_PERMISSION_DENIED, MIC_UNAVAILABLE, AUDIO_CAPTURE_FAILED,
@@ -89,6 +89,7 @@ data class SttStatus(
     val result: SttResult? = null,
     val failure: SttFailure? = null,
     val modelLoadTimeMs: Long? = null,
+    val installedModelBytes: Long = 0,
 )
 
 fun audioDurationMs(sampleCount: Int, sampleRate: Int = WHISPER_SAMPLE_RATE): Long {
@@ -114,14 +115,16 @@ internal class SttStateMachine(initial: SttState = SttState.UNINITIALIZED) {
 
     fun moveTo(next: SttState) {
         val allowed = when (state) {
-            SttState.UNINITIALIZED -> setOf(SttState.INITIALIZING)
+            SttState.UNINITIALIZED -> setOf(SttState.INITIALIZING, SttState.MODEL_MISSING)
+            SttState.MODEL_MISSING -> setOf(SttState.IMPORTING, SttState.INITIALIZING, SttState.UNINITIALIZED)
+            SttState.IMPORTING -> setOf(SttState.VALIDATING, SttState.ERROR, SttState.MODEL_MISSING)
+            SttState.VALIDATING -> setOf(SttState.INITIALIZING, SttState.ERROR, SttState.MODEL_MISSING)
             SttState.INITIALIZING -> setOf(SttState.READY, SttState.MODEL_MISSING, SttState.ERROR, SttState.UNINITIALIZED)
             SttState.READY -> setOf(SttState.LISTENING, SttState.INITIALIZING, SttState.UNINITIALIZED)
             SttState.LISTENING -> setOf(SttState.PROCESSING, SttState.READY, SttState.ERROR, SttState.UNINITIALIZED)
             SttState.PROCESSING -> setOf(SttState.RESULT, SttState.ERROR, SttState.UNINITIALIZED)
             SttState.RESULT -> setOf(SttState.LISTENING, SttState.INITIALIZING, SttState.UNINITIALIZED)
-            SttState.ERROR -> setOf(SttState.INITIALIZING, SttState.LISTENING, SttState.UNINITIALIZED)
-            SttState.MODEL_MISSING -> setOf(SttState.INITIALIZING, SttState.UNINITIALIZED)
+            SttState.ERROR -> setOf(SttState.IMPORTING, SttState.INITIALIZING, SttState.LISTENING, SttState.UNINITIALIZED)
         }
         check(next in allowed) { "Invalid STT transition: $state -> $next" }
         state = next
