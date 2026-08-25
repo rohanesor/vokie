@@ -18,6 +18,12 @@
       "Effect": "Allow",
       "Action": ["cloudfront:CreateInvalidation"],
       "Resource": "arn:aws:cloudfront::REPLACE_AWS_ACCOUNT_ID:distribution/REPLACE_DISTRIBUTION_ID"
+    },
+    {
+      "Sid": "ReadCloudFrontDistribution",
+      "Effect": "Allow",
+      "Action": ["cloudfront:GetDistribution", "cloudfront:GetInvalidation", "cloudfront:ListDistributions"],
+      "Resource": "*"
     }
   ]
 }

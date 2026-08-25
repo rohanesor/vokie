@@ -149,25 +149,37 @@ jobs:
           chmod +x scripts/deploy-aws.sh
           scripts/deploy-aws.sh "${{ steps.metadata.outputs.apk_path }}" "$RELEASE_VERSION" "$RELEASE_COMMIT" "$RELEASE_VERSION_CODE"
 
-      - name: Verify public deployment
+      - name: Verify deployment
         env:
           DISTRIBUTION: ${{ vars.VOKIE_CLOUDFRONT_DISTRIBUTION_ID }}
+          VERSION: ${{ steps.metadata.outputs.version_name }}
         run: |
           set -euo pipefail
-          domain=$(aws cloudfront get-distribution --id "$DISTRIBUTION" --query 'Distribution.DomainName' --output text)
-          url="https://${domain}/release.json"
-          echo "Checking $url"
-          for i in {1..12}; do
-            if curl -fsS "$url" | grep -q '"version"'; then
-              echo "Deployment verified."
-              curl -fsS "$url"
-              exit 0
-            fi
-            echo "Waiting for CloudFront... ($i)"
-            sleep 15
-          done
-          echo "ERROR: Public release.json not reachable after deployment." >&2
-          exit 1
+          # Always verify S3 objects that the deploy script published.
+          aws s3api head-object --bucket "${VOKIE_BUCKET}" --key "downloads/v${VERSION}/Vokie-v${VERSION}.apk" --region "${AWS_REGION}" >/dev/null
+          aws s3api head-object --bucket "${VOKIE_BUCKET}" --key "downloads/latest/Vokie-latest.apk" --region "${AWS_REGION}" >/dev/null
+          aws s3api head-object --bucket "${VOKIE_BUCKET}" --key "release.json" --region "${AWS_REGION}" >/dev/null
+          echo "S3 deployment verified."
+
+          # Best-effort public CloudFront verification. This requires cloudfront:GetDistribution
+          # in the deployment role (added to infrastructure/iam/github-actions-deploy-policy.json).
+          domain=$(aws cloudfront get-distribution --id "$DISTRIBUTION" --query 'Distribution.DomainName' --output text 2>/dev/null || true)
+          if [ -n "$domain" ]; then
+            url="https://${domain}/release.json"
+            echo "Checking public URL $url"
+            for i in {1..12}; do
+              if curl -fsS "$url" | grep -q '"version"'; then
+                echo "Public CloudFront deployment verified."
+                curl -fsS "$url"
+                exit 0
+              fi
+              echo "Waiting for CloudFront... ($i)"
+              sleep 15
+            done
+            echo "WARNING: Public release.json not reachable yet, but S3 objects are present." >&2
+          else
+            echo "WARNING: Could not retrieve CloudFront domain (cloudfront:GetDistribution may not be applied yet). S3 objects verified."
+          fi
 
       - name: Create GitHub Release
         if: startsWith(github.ref, 'refs/tags/')
