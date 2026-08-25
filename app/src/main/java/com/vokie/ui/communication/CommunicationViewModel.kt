@@ -8,6 +8,7 @@ import com.vokie.VokieApplication
 import com.vokie.domain.model.*
 import com.vokie.stt.SttLanguage
 import com.vokie.stt.SttStatus
+import com.vokie.tts.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -16,6 +17,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     private val repository = app.messageRepository
     private val manager = app.transportManager
     private val speechToText = app.speechToText
+    private val textToSpeech = app.textToSpeech
 
     val messages: StateFlow<List<Message>> = repository.observeMessages()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
@@ -25,6 +27,10 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     val sttStatus: StateFlow<SttStatus> = speechToText.status
     val selectedSttLanguage: StateFlow<SttLanguage> = speechToText.selectedLanguage
         .stateIn(viewModelScope, SharingStarted.Eagerly, SttLanguage.ENGLISH)
+    val ttsStatus: StateFlow<TtsStatus> = textToSpeech.status
+    val messageTtsStates: StateFlow<Map<String, MessageTtsState>> = textToSpeech.messageStates
+    val installedTtsLanguages: StateFlow<Set<TtsLanguage>> = textToSpeech.installedLanguages
+    val ttsSpeed: StateFlow<Float> = textToSpeech.speed.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_TTS_SPEED)
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -48,6 +54,13 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun installSttModel(uri: Uri) = action { speechToText.installModel(uri) }
     fun startVoice() = action { speechToText.start(selectedSttLanguage.value) }
     fun stopVoice() = action { speechToText.stop() }
+    fun installTtsModel(language: TtsLanguage, uri: Uri) = action { textToSpeech.installModel(language, uri) }
+    fun setTtsSpeed(speed: Float) = action { textToSpeech.setSpeed(speed) }
+    fun playMessage(message: Message) = action { textToSpeech.play(message) }
+    fun stopMessage(messageId: String) = action { textToSpeech.stop(messageId) }
+    fun stopTts() = action { textToSpeech.stop() }
+    fun acknowledgeSos(messageId: String) = action { textToSpeech.acknowledgeSos(messageId) }
+    fun isIncoming(message: Message) = message.senderId != app.deviceId
     fun retry(messageId: String) = action { repository.retry(messageId) }
     fun clearError() { _error.value = null }
     fun reportError(message: String) { _error.value = message }

@@ -9,9 +9,12 @@ import com.vokie.stt.SpeechToTextUseCase
 import com.vokie.stt.SttLanguagePreferences
 import com.vokie.stt.SttState
 import com.vokie.stt.WhisperSttEngine
+import com.vokie.tts.*
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.stateIn
 import java.util.UUID
 
 class VokieApplication : Application() {
@@ -24,6 +27,8 @@ class VokieApplication : Application() {
     lateinit var sttEngine: WhisperSttEngine; private set
     lateinit var sttLanguagePreferences: SttLanguagePreferences; private set
     lateinit var speechToText: SpeechToTextUseCase; private set
+    lateinit var ttsEngine: SherpaOnnxTtsEngine; private set
+    lateinit var textToSpeech: TextToSpeechUseCase; private set
     lateinit var deviceId: String; private set
 
     override fun onCreate() {
@@ -40,13 +45,20 @@ class VokieApplication : Application() {
         sttLanguagePreferences = SttLanguagePreferences(applicationContext)
         speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)
         applicationScope.launch { speechToText.initialize() }
+        val ttsModels = TtsModelManager(applicationContext)
+        val ttsPreferences = TtsPreferences(applicationContext)
+        val ttsSpeed = ttsPreferences.speed.stateIn(applicationScope, SharingStarted.Eagerly, DEFAULT_TTS_SPEED)
+        ttsEngine = SherpaOnnxTtsEngine(ttsModels, VokieAudioPlayer(applicationContext))
+        val ttsQueue = TtsPlaybackQueue(ttsEngine, ttsSpeed, applicationScope)
+        textToSpeech = TextToSpeechUseCase(ttsEngine, ttsModels, ttsPreferences, ttsQueue).also { it.start() }
 
         applicationScope.launch {
             transportManager.incomingMessages().collect { message ->
                 try {
                     val inserted = messageRepository.persistIncoming(message)
                     database.transportEvents().insert(TransportEventEntity(timestamp = System.currentTimeMillis(), transport = TransportType.BLUETOOTH.name, eventType = if (inserted) "MESSAGE_RECEIVED" else "DUPLICATE_RECEIVED", peerId = bluetoothTransport.connectedPeerId.value, messageId = message.id, detail = null, latencyMs = null))
-                    if (message.requiresAck) transportManager.acknowledge(message.id)
+                    if (message.requiresAck) runCatching { transportManager.acknowledge(message.id) }.onFailure { VokieLog.msg("ACK send failed: ${message.id}: ${it.message}") }
+                    if (inserted) runCatching { textToSpeech.enqueueReceived(message) }.onFailure { VokieLog.tts("Incoming message could not be queued for speech: ${it.message}") }
                 } catch (error: Throwable) {
                     VokieLog.msg("Incoming message rejected: ${error.message}")
                 }
@@ -78,5 +90,6 @@ class VokieApplication : Application() {
 
     private fun releaseIdleStt() {
         if (sttEngine.status.value.state in setOf(SttState.READY, SttState.RESULT, SttState.ERROR)) sttEngine.release()
+        if (ttsEngine.status.value.state in setOf(TtsState.READY, TtsState.COMPLETED, TtsState.ERROR, TtsState.MODEL_MISSING, TtsState.MODEL_LOAD_FAILED)) ttsEngine.release()
     }
 }

@@ -112,6 +112,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
+    // Official sherpa-onnx Android AAR, pinned to the upstream GitHub release.
+    implementation("com.k2fsa:sherpa-onnx:1.13.6@aar")
+
     // DataStore for settings
     implementation("androidx.datastore:datastore-preferences:1.1.1")
 

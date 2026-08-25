@@ -13,3 +13,7 @@ app/.cxx/
 *.gguf
 ggml-*.bin
 app/src/main/assets/models/
+*.onnx
+vits-mms-*.tar.bz2
+*.vokie-tts-model.zip
+app/src/main/assets/tts-models/

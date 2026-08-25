@@ -25,6 +25,7 @@ import androidx.compose.material.icons.automirrored.filled.BluetoothSearching
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.Message
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -52,6 +53,7 @@ import com.vokie.communication.BluetoothPermission
 import com.vokie.communication.VokieProtocol
 import com.vokie.domain.model.*
 import com.vokie.stt.*
+import com.vokie.tts.*
 import com.vokie.ui.communication.CommunicationViewModel
 import com.vokie.ui.theme.*
 
@@ -328,6 +330,11 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     val error by vm.error.collectAsState()
     val stt by vm.sttStatus.collectAsState()
     val selectedLanguage by vm.selectedSttLanguage.collectAsState()
+    val ttsStatus by vm.ttsStatus.collectAsState()
+    val ttsStates by vm.messageTtsStates.collectAsState()
+    val installedTtsLanguages by vm.installedTtsLanguages.collectAsState()
+    val ttsSpeed by vm.ttsSpeed.collectAsState()
+    val selectedTtsLanguage = TtsLanguage.fromMessageCode(selectedLanguage.messageLanguage.code) ?: TtsLanguage.ENGLISH
     val bt = bluetoothUi(state)
     LaunchedEffect(vm) { vm.initializeStt() }
     DisposableEffect(vm) { onDispose { vm.stopDiscovery(); vm.stopVoice() } }
@@ -341,6 +348,7 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
         if (result.resultCode == android.app.Activity.RESULT_CANCELED) vm.reportError("This phone was not made visible. It can still connect to known peers.")
     }
     val modelPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::installSttModel) }
+    val ttsModelPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.installTtsModel(selectedTtsLanguage, it) } }
     val microphonePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         microphoneGranted = granted
         microphoneDenied = !granted
@@ -371,6 +379,17 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
                 onOpenSettings = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))) },
                 onStart = vm::startVoice,
                 onStop = vm::stopVoice,
+            )
+        }
+        item {
+            TtsPanel(
+                status = ttsStatus,
+                language = selectedTtsLanguage,
+                installed = selectedTtsLanguage in installedTtsLanguages,
+                speed = ttsSpeed,
+                onInstallModel = { ttsModelPicker.launch(arrayOf("application/zip", "application/octet-stream")) },
+                onSpeedChanged = vm::setTtsSpeed,
+                onStop = vm::stopTts,
             )
         }
         item {
@@ -444,7 +463,62 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
             }
         }
         if (messages.isEmpty()) item { EmptyState(Icons.Default.Forum, "No messages yet", "Messages created or received on this phone will appear here.", Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) }
-        else items(messages, key = { it.id }) { message -> MessageCard(message, onRetry = { vm.retry(message.id) }) }
+        else items(messages, key = { it.id }) { message ->
+            MessageCard(
+                message = message,
+                ttsState = ttsStates[message.id],
+                incoming = vm.isIncoming(message),
+                onRetry = { vm.retry(message.id) },
+                onPlay = { vm.playMessage(message) },
+                onStop = { vm.stopMessage(message.id) },
+                onAcknowledgeSos = { vm.acknowledgeSos(message.id) },
+            )
+        }
+    }
+}
+
+@Composable
+private fun TtsPanel(
+    status: TtsStatus,
+    language: TtsLanguage,
+    installed: Boolean,
+    speed: Float,
+    onInstallModel: () -> Unit,
+    onSpeedChanged: (Float) -> Unit,
+    onStop: () -> Unit,
+) {
+    var pendingSpeed by remember(speed) { mutableFloatStateOf(speed) }
+    VokiePanel(Modifier.padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                SectionLabel("OFFLINE TEXT TO SPEECH")
+                Text("MMS-TTS • sherpa-onnx $SHERPA_ONNX_VERSION • local PCM", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp))
+            }
+            StatusBadge(when {
+                !language.hasOfficialSherpaMmsPackage -> "MODEL UNAVAILABLE"
+                !installed -> "MODEL NOT INSTALLED"
+                else -> status.state.name.replace('_', ' ')
+            }, when {
+                status.state == TtsState.ERROR || status.state == TtsState.MODEL_LOAD_FAILED -> VokieTheme.colors.alert
+                installed && status.state in setOf(TtsState.READY, TtsState.COMPLETED, TtsState.PLAYING) -> VokieTheme.colors.success
+                else -> VokieTheme.colors.warning
+            }, loading = status.state == TtsState.INITIALIZING || status.state == TtsState.SYNTHESIZING)
+        }
+        Text("Message language selects the voice model. Current language: ${language.nativeName} (${language.iso6393}).", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 12.dp))
+        if (!language.hasOfficialSherpaMmsPackage) {
+            Text("The official sherpa-onnx catalogue has no pre-converted vits-mms package for this language. Vokie will not invent or silently substitute a model.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
+        } else if (!installed) {
+            Text("TTS MODEL NOT INSTALLED. Import a ZIP containing the unchanged model.onnx and tokens.txt from ${language.modelPackage?.officialArchiveName}.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
+            PrimaryAction("INSTALL LOCAL TTS MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 10.dp))
+        }
+        Text("Speech speed • ${String.format(java.util.Locale.US, "%.2f", pendingSpeed)}x", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 14.dp))
+        Slider(value = pendingSpeed, onValueChange = { pendingSpeed = it }, onValueChangeFinished = { onSpeedChanged(pendingSpeed) }, valueRange = MIN_TTS_SPEED..MAX_TTS_SPEED, steps = 2, enabled = status.state !in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING))
+        if (status.state in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING)) SecondaryAction(if (status.state == TtsState.PLAYING) "STOP PLAYBACK" else "STOP AFTER SYNTHESIS", Icons.Default.Stop, onStop, Modifier.fillMaxWidth())
+        status.failure?.let { Text(it.userMessage, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(top = 10.dp)) }
+        status.result?.let { result ->
+            Text("${result.textLength} chars • synthesis ${result.synthesisTimeMs} ms • audio ${result.audioDurationMs} ms • RTF ${result.realTimeFactor?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "unavailable"}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
+        }
+        status.modelLoadTimeMs?.let { Text("Model load ${it} ms", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp)) }
     }
 }
 
@@ -537,7 +611,15 @@ private fun InlineError(message: String, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun MessageCard(message: Message, onRetry: () -> Unit) {
+private fun MessageCard(
+    message: Message,
+    ttsState: MessageTtsState?,
+    incoming: Boolean,
+    onRetry: () -> Unit,
+    onPlay: () -> Unit,
+    onStop: () -> Unit,
+    onAcknowledgeSos: () -> Unit,
+) {
     val statusColor = when (message.deliveryState) {
         DeliveryState.RECEIVED_BY_PEER -> VokieTheme.colors.success
         DeliveryState.FAILED -> VokieTheme.colors.alert
@@ -550,11 +632,20 @@ private fun MessageCard(message: Message, onRetry: () -> Unit) {
             Text(message.messageType.name.replace('_', ' '), style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary)
             StatusBadge(message.deliveryState.name.replace('_', ' '), statusColor, loading = message.deliveryState == DeliveryState.TRANSMITTING)
         }
+        if (incoming && message.messageType == MessageType.SOS) Text("NEARBY SOS ALERT", style = VokieTheme.typography.headerSmall, color = VokieTheme.colors.alert, modifier = Modifier.padding(top = 12.dp))
         Text(message.text, style = VokieTheme.typography.bodyLarge, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(vertical = 12.dp))
         Text("${message.language}  •  ${message.transport?.name ?: "WAITING FOR TRANSPORT"}  •  ${message.hopCount} hop", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary)
         if (message.retryCount > 0) Text("Retry ${message.retryCount} of 3", style = VokieTheme.typography.caption, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 5.dp))
         message.lastError?.let { Text(it, style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp)) }
         if (message.deliveryState == DeliveryState.FAILED) SecondaryAction("RETRY MESSAGE", Icons.Default.Refresh, onRetry, Modifier.fillMaxWidth().padding(top = 12.dp))
+        if (incoming) {
+            ttsState?.let { Text("Speech • ${it.name.replace('_', ' ')}", style = VokieTheme.typography.caption, color = if (it == MessageTtsState.FAILED) VokieTheme.colors.alert else VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp)) }
+            when {
+                message.messageType == MessageType.SOS && ttsState in setOf(MessageTtsState.QUEUED, MessageTtsState.SYNTHESIZING, MessageTtsState.PLAYING) -> SecondaryAction("ACKNOWLEDGED — STOP ALERT", Icons.Default.Stop, onAcknowledgeSos, Modifier.fillMaxWidth().padding(top = 12.dp))
+                ttsState in setOf(MessageTtsState.SYNTHESIZING, MessageTtsState.PLAYING) -> SecondaryAction("STOP SPEECH", Icons.Default.Stop, onStop, Modifier.fillMaxWidth().padding(top = 12.dp))
+                else -> SecondaryAction("PLAY MESSAGE", Icons.AutoMirrored.Filled.VolumeUp, onPlay, Modifier.fillMaxWidth().padding(top = 12.dp))
+            }
+        }
     }
 }
 
@@ -616,6 +707,8 @@ private data class SettingInfo(val icon: ImageVector, val title: String, val des
 fun MoreScreen(vm: CommunicationViewModel = viewModel()) {
     val bluetooth by vm.connectionState.collectAsState()
     val stt by vm.sttStatus.collectAsState()
+    val tts by vm.ttsStatus.collectAsState()
+    val ttsSpeed by vm.ttsSpeed.collectAsState()
     val language by vm.selectedSttLanguage.collectAsState()
     val bt = bluetoothUi(bluetooth)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -633,7 +726,8 @@ fun MoreScreen(vm: CommunicationViewModel = viewModel()) {
         )) }
         item { SettingsGroup("PERSONALISATION", listOf(
             SettingInfo(Icons.Default.Language, "Language", "Current STT and message language", language.nativeName),
-            SettingInfo(Icons.Default.RecordVoiceOver, "Voice settings", "Offline whisper.cpp multilingual recognition", stt.state.name.replace('_', ' ')),
+            SettingInfo(Icons.Default.RecordVoiceOver, "Speech recognition", "Offline whisper.cpp multilingual recognition", stt.state.name.replace('_', ' ')),
+            SettingInfo(Icons.AutoMirrored.Filled.VolumeUp, "Speech playback", "Offline MMS-TTS via sherpa-onnx • ${String.format(java.util.Locale.US, "%.2f", ttsSpeed)}x", tts.state.name.replace('_', ' ')),
             SettingInfo(Icons.Default.AccessibilityNew, "Accessibility", "Uses Android text scaling and screen-reader semantics", "SYSTEM"),
             SettingInfo(Icons.Default.Vibration, "Haptic feedback", "Confirmation feedback for critical actions", "ENABLED"),
             SettingInfo(Icons.Default.DarkMode, "Appearance", "Dark emergency interface", "DARK"),
