@@ -6,9 +6,9 @@ Vokie is an offline-first Android application for multilingual emergency communi
 
 ## Current status
 
-- **IMPLEMENTED:** Kotlin, Jetpack Compose, Material 3, dark-first emergency UI, Gradle wrapper, real Bluetooth RFCOMM transport, Vokie service UUID filtering, discovery/discoverability, connector/server roles, compact binary protocol, persistence-before-ACK, Room message/peer/event storage, bounded persistent outbound queue, real text composer, CI/CD definitions, private S3 + CloudFront infrastructure, and static download website.
-- **IN PROGRESS:** Physical two-device interoperability and reconnect validation.
-- **PLANNED:** Local multilingual STT/VAD, local language-specific TTS models, Wi-Fi Direct fallback, relay, and ultrasonic transport.
+- **IMPLEMENTED:** Kotlin, Jetpack Compose, Material 3, dark-first emergency UI, Gradle wrapper, real Bluetooth RFCOMM transport, Vokie service UUID filtering, discovery/discoverability, connector/server roles, compact binary protocol, persistence-before-ACK, Room message/peer/event storage, bounded persistent outbound queue, real text composer, local AudioRecord capture, energy VAD, whisper.cpp JNI inference, sherpa-onnx MMS/VITS synthesis, direct PCM playback, multilingual language persistence, CI/CD definitions, private S3 + CloudFront infrastructure, and static download website.
+- **IN PROGRESS:** Physical two-device interoperability, on-device STT/TTS performance validation, and verified MMS conversions for nine target languages absent from the official sherpa catalogue.
+- **PLANNED:** Wi-Fi Direct fallback, relay, and ultrasonic transport.
 
 The application does not use DemoTransport, fake Bluetooth, fake STT, fake TTS, a backend, cloud communication, or simulated delivery states.
 
@@ -30,14 +30,14 @@ The Bluetooth protocol service UUID is documented in `app/src/main/java/com/voki
 
 ## Supported languages
 
-The canonical language model currently defines Hindi, Gujarati, Marathi, Kannada, Malayalam, Tamil, Telugu, Odia, Bengali, and English. Local STT/TTS model integration is still in progress.
+Offline whisper.cpp STT is configured for Hindi, Gujarati, Marathi, Kannada, Malayalam, Tamil, Telugu, Odia, Bengali, and English. The replaceable STT strategy is documented in [`docs/offline-stt.md`](docs/offline-stt.md). MMS-TTS model availability, exact files, licensing, and sherpa-onnx playback are documented in [`docs/offline-tts.md`](docs/offline-tts.md).
 
 ## Android requirements
 
 - Android 7.0+ (`minSdk 24`)
 - Target SDK 34
 - JDK 17 for development/builds
-- Android SDK 34
+- Android SDK 34, NDK 27.0.12077973, and CMake 3.22.1
 - Nearby Devices permission is requested contextually when discovery or connection starts
 - No account or internet connection is required for local communication after installation
 
@@ -67,4 +67,4 @@ Never commit signing keystores, private keys, passwords, AWS access keys, or `lo
 
 ## Roadmap
 
-The immediate product priority is physical two-phone validation of Bluetooth discovery, persistence, ACK, disconnect, and queue recovery. Local STT integration begins only after that communication foundation is stable. Wi-Fi Direct follows only after that core path is stable.
+The immediate product priority is physical Android validation of the complete voice → text → Bluetooth → text → speech path. Wi-Fi Direct follows only after that core loop is stable.

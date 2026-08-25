@@ -3,9 +3,6 @@ package com.vokie.domain.model
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
-interface SpeechToTextEngine { suspend fun transcribe(audio: ByteArray): String }
-interface TextToSpeechEngine { suspend fun synthesize(text: String, language: String) }
-
 enum class TransportType { BLUETOOTH, WIFI_DIRECT, ULTRASONIC }
 enum class DeliveryState { QUEUED, TRANSMITTING, RETRYING, RECEIVED_BY_PEER, RELAYED, DELIVERED, FAILED }
 enum class MessageType { TEXT, SOS, CHECK_IN, SYSTEM }

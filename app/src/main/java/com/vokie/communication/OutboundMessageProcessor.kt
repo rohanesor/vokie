@@ -31,7 +31,7 @@ class OutboundMessageProcessor(
         for (id in ids) {
             val message = repository.getMessage(id)?.takeIf { it.deliveryState == com.vokie.domain.model.DeliveryState.QUEUED || it.deliveryState == com.vokie.domain.model.DeliveryState.RETRYING } ?: continue
             val transport = transports.activeTransport() ?: return
-            repository.markTransmitting(id)
+            repository.markTransmitting(id, transport.type)
             events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transport.type.name, eventType = "TRANSMISSION_STARTED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = null))
             val result = transport.send(message)
             if (result.acknowledged) {

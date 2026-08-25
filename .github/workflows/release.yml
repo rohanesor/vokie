@@ -2,6 +2,7 @@ name: Vokie Release
 
 on:
   push:
+    branches: [main]
     tags:
       - 'v*.*.*'
 
@@ -25,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
-      - name: Check out tagged source
+      - name: Check out source
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
@@ -53,6 +54,9 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
@@ -76,6 +80,9 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Clean
+        run: ./gradlew clean --no-daemon
+
       - name: Unit tests
         run: ./gradlew test --no-daemon
 
@@ -88,11 +95,45 @@ jobs:
         run: |
           set -euo pipefail
           version="${VERSION_NAME#v}"
-          ./gradlew assembleRelease -PversionName="$version" -PproductionRelease=true --no-daemon
+          version_code=$(echo "$version" | awk -F. '{print ($1*1000000)+($2*1000)+$3}')
+          ./gradlew assembleRelease -PversionName="$version" -PversionCode="$version_code" -PproductionRelease=true --no-daemon
           test -f app/build/outputs/apk/release/app-release.apk
           mkdir -p release
           cp app/build/outputs/apk/release/app-release.apk "release/Vokie-v${version}.apk"
           sha256sum "release/Vokie-v${version}.apk" > "release/Vokie-v${version}.apk.sha256"
+
+      - name: Verify release APK
+        env:
+          VERSION_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${VERSION_NAME#v}"
+          apk="release/Vokie-v${version}.apk"
+          test -f "$apk"
+          echo "APK size: $(du -h "$apk" | awk '{print $1}')"
+          sdkmanager --install "build-tools;34.0.0" >/dev/null 2>&1 || true
+          aapt_path="$ANDROID_SDK_ROOT/build-tools/34.0.0/aapt"
+          apksigner_path="$ANDROID_SDK_ROOT/build-tools/34.0.0/apksigner"
+          "$aapt_path" dump badging "$apk" | grep -E "package:|versionName|versionCode|application-label|native-code"
+          "$apksigner_path" verify --print-certs "$apk"
+          if "$aapt_path" dump badging "$apk" | grep -q "application-debuggable"; then
+            echo "ERROR: APK is debuggable and cannot be deployed as production." >&2
+            exit 1
+          fi
+
+      - name: Extract version metadata
+        id: metadata
+        env:
+          VERSION_NAME: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version="${VERSION_NAME#v}"
+          apk="release/Vokie-v${version}.apk"
+          aapt_path="$ANDROID_SDK_ROOT/build-tools/34.0.0/aapt"
+          version_code=$("$aapt_path" dump badging "$apk" | grep -oP "versionCode='\K\d+")
+          echo "version_code=$version_code" >> "$GITHUB_OUTPUT"
+          echo "version_name=$version" >> "$GITHUB_OUTPUT"
+          echo "apk_path=$apk" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS credentials through GitHub OIDC
         uses: aws-actions/configure-aws-credentials@v4
@@ -102,13 +143,35 @@ jobs:
 
       - name: Publish APK and website to AWS
         env:
-          RELEASE_VERSION: ${{ github.ref_name }}
+          RELEASE_VERSION: ${{ steps.metadata.outputs.version_name }}
+          RELEASE_VERSION_CODE: ${{ steps.metadata.outputs.version_code }}
           RELEASE_COMMIT: ${{ github.sha }}
         run: |
           chmod +x scripts/deploy-aws.sh
-          scripts/deploy-aws.sh "release/Vokie-${RELEASE_VERSION}.apk" "${RELEASE_VERSION#v}" "$RELEASE_COMMIT"
+          scripts/deploy-aws.sh "${{ steps.metadata.outputs.apk_path }}" "$RELEASE_VERSION" "$RELEASE_COMMIT" "$RELEASE_VERSION_CODE"
+
+      - name: Verify public deployment
+        env:
+          DISTRIBUTION: ${{ vars.VOKIE_CLOUDFRONT_DISTRIBUTION_ID }}
+        run: |
+          set -euo pipefail
+          domain=$(aws cloudfront get-distribution --id "$DISTRIBUTION" --query 'Distribution.DomainName' --output text)
+          url="https://${domain}/release.json"
+          echo "Checking $url"
+          for i in {1..12}; do
+            if curl -fsS "$url" | grep -q '"version"'; then
+              echo "Deployment verified."
+              curl -fsS "$url"
+              exit 0
+            fi
+            echo "Waiting for CloudFront... ($i)"
+            sleep 15
+          done
+          echo "ERROR: Public release.json not reachable after deployment." >&2
+          exit 1
 
       - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           name: Vokie ${{ github.ref_name }}
@@ -118,7 +181,7 @@ jobs:
 
             Voice when networks fail.
 
-            This release was built from `${{ github.sha }}`. See the download website for installation instructions and SHA-256 verification.
+            This release was built from `${{ github.sha }}`. See the Vokie download website for the production APK and SHA-256 verification.
           files: |
             release/Vokie-${{ github.ref_name }}.apk
             release/Vokie-${{ github.ref_name }}.apk.sha256

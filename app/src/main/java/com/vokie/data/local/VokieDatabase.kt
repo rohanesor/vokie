@@ -11,6 +11,7 @@ interface MessageDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE) suspend fun insert(entity: MessageEntity): Long
     @Update suspend fun update(entity: MessageEntity)
     @Query("UPDATE messages SET deliveryState = :state, lastError = :error WHERE id = :id") suspend fun setState(id: String, state: String, error: String? = null)
+    @Query("UPDATE messages SET deliveryState = 'TRANSMITTING', transport = :transport, lastError = NULL WHERE id = :id") suspend fun markTransmitting(id: String, transport: String)
     @Query("UPDATE messages SET deliveryState = :state, retryCount = retryCount + 1, lastError = :error WHERE id = :id") suspend fun incrementRetry(id: String, state: String, error: String)
     @Query("UPDATE messages SET deliveryState = 'QUEUED', retryCount = 0, lastError = NULL WHERE id = :id") suspend fun resetForManualRetry(id: String)
     @Query("UPDATE messages SET deliveryState = 'QUEUED', lastError = 'Transmission interrupted; queued after restart' WHERE deliveryState = 'TRANSMITTING'") suspend fun recoverInterrupted()

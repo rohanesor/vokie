@@ -3,6 +3,17 @@
 local.properties
 build/
 app/build/
+app/.cxx/
 *.iml
 .idea/
 .DS_Store
+
+# Local speech models are installed on-device, never committed
+*.ggml
+*.gguf
+ggml-*.bin
+app/src/main/assets/models/
+*.onnx
+vits-mms-*.tar.bz2
+*.vokie-tts-model.zip
+app/src/main/assets/tts-models/

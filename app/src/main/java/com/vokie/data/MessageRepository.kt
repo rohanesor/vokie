@@ -12,7 +12,7 @@ interface MessageRepository {
     suspend fun getMessage(id: String): Message?
     suspend fun createMessage(text: String, senderId: String, receiverId: String?, language: VokieLanguage, type: MessageType = MessageType.TEXT): Message
     suspend fun persistIncoming(message: Message): Boolean
-    suspend fun markTransmitting(id: String)
+    suspend fun markTransmitting(id: String, transport: TransportType)
     suspend fun markReceived(id: String)
     suspend fun markQueued(id: String, error: String? = null)
     suspend fun incrementRetry(id: String, error: String): Int
@@ -40,7 +40,7 @@ class RoomMessageRepository(private val dao: MessageDao) : MessageRepository {
         com.vokie.communication.VokieLog.msg(if (inserted) "Message persisted: ${message.id}" else "Duplicate ignored: ${message.id}")
         return inserted
     }
-    override suspend fun markTransmitting(id: String) = dao.setState(id, DeliveryState.TRANSMITTING.name)
+    override suspend fun markTransmitting(id: String, transport: TransportType) = dao.markTransmitting(id, transport.name)
     override suspend fun markReceived(id: String) = dao.setState(id, DeliveryState.RECEIVED_BY_PEER.name)
     override suspend fun markQueued(id: String, error: String?) = dao.setState(id, DeliveryState.QUEUED.name, error)
     override suspend fun incrementRetry(id: String, error: String): Int { dao.incrementRetry(id, DeliveryState.RETRYING.name, error); return dao.find(id)?.retryCount ?: 0 }
