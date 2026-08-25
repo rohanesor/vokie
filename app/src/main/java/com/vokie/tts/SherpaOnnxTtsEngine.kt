@@ -36,6 +36,21 @@ class SherpaOnnxTtsEngine(
         initializeLocked(language)
     }
 
+    override suspend fun install(language: TtsLanguage, installModel: suspend () -> Unit) = operationMutex.withLock {
+        releaseModel()
+        moveTo(TtsState.IMPORTING, language)
+        try {
+            moveTo(TtsState.VALIDATING, language)
+            installModel()
+            moveTo(TtsState.INITIALIZING, language)
+            initializeLocked(language)
+        } catch (error: Throwable) {
+            val failure = mapTtsFailure(error, TtsErrorCode.MODEL_INVALID, error.message ?: "The selected TTS model pack could not be installed.")
+            moveTo(TtsState.ERROR, language, failure = failure)
+            throw TtsException(failure.code, failure.userMessage, error)
+        }
+    }
+
     override suspend fun synthesize(text: String, language: TtsLanguage, speed: Float): Pair<AudioBuffer, TtsResult> = operationMutex.withLock {
         val normalized = text.trim()
         if (normalized.isEmpty() || normalized.length > MAX_TEXT_CHARS) throw TtsException(TtsErrorCode.SYNTHESIS_FAILED, "Speech text must contain 1 to $MAX_TEXT_CHARS characters.")
@@ -87,8 +102,7 @@ class SherpaOnnxTtsEngine(
     override fun release() {
         stopRequested.set(true)
         audioPlayer.release()
-        tts?.release(); tts = null
-        activeLanguage = null; firstSynthesis = true
+        releaseModel()
         modelManager.releaseUnusedModel(null)
         if (stateMachine.state != TtsState.UNINITIALIZED) moveTo(TtsState.UNINITIALIZED)
     }
@@ -125,7 +139,8 @@ class SherpaOnnxTtsEngine(
             val loaded = withContext(Dispatchers.IO) { OfflineTts(config = OfflineTtsConfig(model = modelConfig, maxNumSentences = 1)) }
             tts = loaded; activeLanguage = language; firstSynthesis = true
             val loadTime = SystemClock.elapsedRealtime() - started
-            moveTo(TtsState.READY, language, modelLoadTimeMs = loadTime)
+            val size = modelManager.installedSizeBytes(language)
+            moveTo(TtsState.READY, language, modelLoadTimeMs = loadTime, installedModelBytes = size)
             VokieLog.tts("Loaded ${pack.officialArchiveName} in ${loadTime}ms")
         } catch (error: Throwable) {
             tts?.release(); tts = null; activeLanguage = null
@@ -140,9 +155,16 @@ class SherpaOnnxTtsEngine(
         result: TtsResult? = null,
         failure: TtsFailure? = null,
         modelLoadTimeMs: Long? = _status.value.modelLoadTimeMs,
+        installedModelBytes: Long = _status.value.installedModelBytes,
     ) {
         stateMachine.moveTo(state)
-        _status.value = TtsStatus(state, language, result, failure, modelLoadTimeMs)
+        _status.value = TtsStatus(state, language, result, failure, modelLoadTimeMs, installedModelBytes)
+    }
+
+    private fun releaseModel() {
+        tts?.release(); tts = null
+        activeLanguage = null
+        firstSynthesis = true
     }
 
     private fun fail(failure: TtsFailure) {

@@ -37,6 +37,9 @@ class TtsCoreTest {
 
     @Test fun stateMachineRequiresInitializationAndRealSynthesisOrder() {
         val machine = TtsStateMachine()
+        machine.moveTo(TtsState.MODEL_MISSING)
+        machine.moveTo(TtsState.IMPORTING)
+        machine.moveTo(TtsState.VALIDATING)
         machine.moveTo(TtsState.INITIALIZING)
         machine.moveTo(TtsState.READY)
         machine.moveTo(TtsState.SYNTHESIZING)

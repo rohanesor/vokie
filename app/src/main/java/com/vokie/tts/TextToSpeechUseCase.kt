@@ -19,8 +19,7 @@ class TextToSpeechUseCase(
     fun start() = queue.start()
 
     suspend fun installModel(language: TtsLanguage, zipUri: Uri) {
-        modelManager.installZip(language, zipUri)
-        engine.initialize(language)
+        engine.install(language) { modelManager.installZip(language, zipUri) }
     }
 
     suspend fun setSpeed(speed: Float) = preferences.setSpeed(speed)

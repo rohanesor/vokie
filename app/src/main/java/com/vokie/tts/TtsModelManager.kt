@@ -28,6 +28,12 @@ class TtsModelManager(private val context: Context) {
             File(modelDirectory(language), pack.tokens.fileName).length() == pack.tokens.sizeBytes
     }
 
+    fun installedSizeBytes(language: TtsLanguage): Long {
+        val dir = modelDirectory(language)
+        if (!dir.isDirectory) return 0L
+        return dir.walkBottomUp().filter { it.isFile }.map { it.length() }.sum()
+    }
+
     fun missingLanguages(): Set<TtsLanguage> = TtsLanguage.entries.filterNot(::isInstalled).toSet()
     fun availableOfficialPackages(): Set<TtsLanguage> = TtsLanguage.entries.filter { it.modelPackage != null }.toSet()
 

@@ -56,26 +56,36 @@ class WhisperSttEngine(
             moveTo(SttState.MODEL_MISSING, failure = SttFailure(SttErrorCode.MODEL_MISSING, "STT MODEL NOT INSTALLED"))
             return@withLock
         }
+        val modelFile = model.localFile(context)
+        val size = modelFile.length()
         val started = SystemClock.elapsedRealtime()
         try {
-            val loaded = withContext(Dispatchers.IO) { native.nativeInit(model.localFile(context).absolutePath) }
+            val loaded = withContext(Dispatchers.IO) { native.nativeInit(modelFile.absolutePath) }
             check(loaded != 0L) { "whisper.cpp returned an empty context" }
             nativeContext = loaded
             val loadTime = SystemClock.elapsedRealtime() - started
-            moveTo(SttState.READY, modelLoadTimeMs = loadTime)
+            moveTo(SttState.READY, modelLoadTimeMs = loadTime, installedModelBytes = size)
             VokieLog.stt("Model loaded in ${loadTime}ms: ${model.id}")
         } catch (error: Throwable) {
-            modelStore.delete()
             fail(mapSttFailure(error, SttErrorCode.MODEL_LOAD_FAILED, "The local STT model could not be loaded."))
         }
     }
 
     suspend fun installModel(uri: Uri) = initializationMutex.withLock {
         releaseContext()
-        moveToInitializingForInstall()
+        moveTo(SttState.IMPORTING, failure = null)
         try {
-            modelStore.install(uri)
-            initializeFromInstallingState()
+            moveTo(SttState.VALIDATING)
+            val installed = modelStore.install(uri)
+            val size = installed.length()
+            moveTo(SttState.INITIALIZING, installedModelBytes = size)
+            val started = SystemClock.elapsedRealtime()
+            val loaded = withContext(Dispatchers.IO) { native.nativeInit(installed.absolutePath) }
+            check(loaded != 0L)
+            nativeContext = loaded
+            val loadTime = SystemClock.elapsedRealtime() - started
+            moveTo(SttState.READY, modelLoadTimeMs = loadTime, installedModelBytes = size)
+            VokieLog.stt("Model installed and loaded: ${model.id} (${size} bytes, ${loadTime}ms)")
         } catch (error: Throwable) {
             fail(mapSttFailure(error, SttErrorCode.MODEL_LOAD_FAILED, error.message ?: "The selected STT model could not be installed."))
         }
@@ -157,9 +167,10 @@ class WhisperSttEngine(
         result: SttResult? = null,
         failure: SttFailure? = null,
         modelLoadTimeMs: Long? = _status.value.modelLoadTimeMs,
+        installedModelBytes: Long = _status.value.installedModelBytes,
     ) {
         stateMachine.moveTo(state)
-        _status.value = SttStatus(state, vadState, result, failure, modelLoadTimeMs)
+        _status.value = SttStatus(state, vadState, result, failure, modelLoadTimeMs, installedModelBytes)
     }
 
     private fun fail(failure: SttFailure) {
@@ -172,28 +183,6 @@ class WhisperSttEngine(
         val handle = nativeContext
         nativeContext = 0
         if (handle != 0L) runCatching { native.nativeFree(handle) }
-    }
-
-    private fun moveToInitializingForInstall() {
-        when (stateMachine.state) {
-            SttState.UNINITIALIZED, SttState.MODEL_MISSING, SttState.READY, SttState.RESULT, SttState.ERROR -> moveTo(SttState.INITIALIZING)
-            SttState.INITIALIZING -> Unit
-            else -> error("Cannot install a model while STT is active")
-        }
-    }
-
-    private suspend fun initializeFromInstallingState() {
-        check(stateMachine.state == SttState.INITIALIZING)
-        val started = SystemClock.elapsedRealtime()
-        try {
-            val loaded = withContext(Dispatchers.IO) { native.nativeInit(model.localFile(context).absolutePath) }
-            check(loaded != 0L)
-            nativeContext = loaded
-            moveTo(SttState.READY, modelLoadTimeMs = SystemClock.elapsedRealtime() - started)
-        } catch (error: Throwable) {
-            modelStore.delete()
-            throw error
-        }
     }
 
 }

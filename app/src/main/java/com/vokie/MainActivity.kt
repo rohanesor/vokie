@@ -52,9 +52,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vokie.communication.BluetoothPermission
 import com.vokie.communication.VokieProtocol
 import com.vokie.domain.model.*
+import com.vokie.map.*
 import com.vokie.stt.*
 import com.vokie.tts.*
 import com.vokie.ui.communication.CommunicationViewModel
+import com.vokie.ui.map.MapViewModel
 import com.vokie.ui.theme.*
 
 class MainActivity : ComponentActivity() {
@@ -335,6 +337,7 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     val installedTtsLanguages by vm.installedTtsLanguages.collectAsState()
     val ttsSpeed by vm.ttsSpeed.collectAsState()
     val selectedTtsLanguage = TtsLanguage.fromMessageCode(selectedLanguage.messageLanguage.code) ?: TtsLanguage.ENGLISH
+    val pushToTalk by vm.pushToTalkEnabled.collectAsState()
     val bt = bluetoothUi(state)
     LaunchedEffect(vm) { vm.initializeStt() }
     DisposableEffect(vm) { onDispose { vm.stopDiscovery(); vm.stopVoice() } }
@@ -373,6 +376,8 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
                 language = selectedLanguage,
                 microphoneGranted = microphoneGranted,
                 microphoneDenied = microphoneDenied,
+                pushToTalk = pushToTalk,
+                onPushToTalkChanged = vm::setPushToTalk,
                 onLanguageSelected = vm::selectSttLanguage,
                 onInstallModel = { modelPicker.launch(arrayOf("application/octet-stream", "application/x-binary", "*/*")) },
                 onRequestMicrophone = { microphonePermission.launch(Manifest.permission.RECORD_AUDIO) },
@@ -496,20 +501,25 @@ private fun TtsPanel(
             }
             StatusBadge(when {
                 !language.hasOfficialSherpaMmsPackage -> "MODEL UNAVAILABLE"
-                !installed -> "MODEL NOT INSTALLED"
+                !installed && status.state == TtsState.MODEL_MISSING -> "MODEL NOT INSTALLED"
                 else -> status.state.name.replace('_', ' ')
             }, when {
                 status.state == TtsState.ERROR || status.state == TtsState.MODEL_LOAD_FAILED -> VokieTheme.colors.alert
                 installed && status.state in setOf(TtsState.READY, TtsState.COMPLETED, TtsState.PLAYING) -> VokieTheme.colors.success
                 else -> VokieTheme.colors.warning
-            }, loading = status.state == TtsState.INITIALIZING || status.state == TtsState.SYNTHESIZING)
+            }, loading = status.state in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING, TtsState.SYNTHESIZING))
         }
         Text("Message language selects the voice model. Current language: ${language.nativeName} (${language.iso6393}).", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 12.dp))
+        if (status.state in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING)) {
+            Text("Model ${status.state.name.lowercase().replace('_', ' ')}...", style = VokieTheme.typography.body, color = VokieTheme.colors.accent, modifier = Modifier.padding(top = 8.dp))
+        }
         if (!language.hasOfficialSherpaMmsPackage) {
             Text("The official sherpa-onnx catalogue has no pre-converted vits-mms package for this language. Vokie will not invent or silently substitute a model.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
         } else if (!installed) {
             Text("TTS MODEL NOT INSTALLED. Import a ZIP containing the unchanged model.onnx and tokens.txt from ${language.modelPackage?.officialArchiveName}.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
-            PrimaryAction("INSTALL LOCAL TTS MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 10.dp))
+            PrimaryAction("INSTALL LOCAL TTS MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 10.dp), enabled = status.state !in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING, TtsState.SYNTHESIZING))
+        } else {
+            Text("Model installed • ${formatBytes(status.installedModelBytes)}", style = VokieTheme.typography.caption, color = VokieTheme.colors.success, modifier = Modifier.padding(top = 10.dp))
         }
         Text("Speech speed • ${String.format(java.util.Locale.US, "%.2f", pendingSpeed)}x", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 14.dp))
         Slider(value = pendingSpeed, onValueChange = { pendingSpeed = it }, onValueChangeFinished = { onSpeedChanged(pendingSpeed) }, valueRange = MIN_TTS_SPEED..MAX_TTS_SPEED, steps = 2, enabled = status.state !in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING))
@@ -528,6 +538,8 @@ private fun SttPanel(
     language: SttLanguage,
     microphoneGranted: Boolean,
     microphoneDenied: Boolean,
+    pushToTalk: Boolean,
+    onPushToTalkChanged: (Boolean) -> Unit,
     onLanguageSelected: (SttLanguage) -> Unit,
     onInstallModel: () -> Unit,
     onRequestMicrophone: () -> Unit,
@@ -537,15 +549,21 @@ private fun SttPanel(
 ) {
     var languageMenu by remember { mutableStateOf(false) }
     val canSpeak = microphoneGranted && status.state in setOf(SttState.READY, SttState.RESULT, SttState.ERROR)
-    val voiceModifier = if (canSpeak) {
-        Modifier.pointerInput(language, status.state) {
+    val voiceModifier = when {
+        !canSpeak -> Modifier
+        pushToTalk -> Modifier.pointerInput(language, status.state) {
             detectTapGestures(onPress = {
                 onStart()
                 tryAwaitRelease()
                 onStop()
             })
         }
-    } else Modifier
+        else -> Modifier.pointerInput(language, status.state) {
+            detectTapGestures(onTap = {
+                if (status.state == SttState.LISTENING) onStop() else onStart()
+            })
+        }
+    }
     VokiePanel(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -557,7 +575,7 @@ private fun SttPanel(
                 SttState.LISTENING, SttState.PROCESSING, SttState.INITIALIZING -> VokieTheme.colors.accent
                 SttState.ERROR -> VokieTheme.colors.alert
                 else -> VokieTheme.colors.warning
-            }, loading = status.state == SttState.INITIALIZING || status.state == SttState.PROCESSING)
+            }, loading = status.state in setOf(SttState.IMPORTING, SttState.VALIDATING, SttState.INITIALIZING, SttState.PROCESSING))
         }
         Box(Modifier.fillMaxWidth().padding(top = 14.dp)) {
             SecondaryAction(language.nativeName, Icons.Default.Language, { languageMenu = true }, enabled = status.state !in setOf(SttState.LISTENING, SttState.PROCESSING), modifier = Modifier.fillMaxWidth())
@@ -567,24 +585,32 @@ private fun SttPanel(
                 }
             }
         }
+        Row(Modifier.fillMaxWidth().padding(top = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text("Push-to-talk", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary); Text(if (pushToTalk) "Hold the button to speak" else "Tap to start, silence stops", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary) }
+            Switch(checked = pushToTalk, onCheckedChange = onPushToTalkChanged, enabled = status.state !in setOf(SttState.LISTENING, SttState.PROCESSING))
+        }
         if (status.state == SttState.MODEL_MISSING || status.failure?.code == SttErrorCode.MODEL_LOAD_FAILED) {
             Text("STT MODEL NOT INSTALLED. Select the verified ggml-tiny-q5_1.bin file from local storage. Vokie will not download it.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 14.dp))
-            PrimaryAction("INSTALL LOCAL STT MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 12.dp))
+            PrimaryAction("INSTALL LOCAL STT MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 12.dp), enabled = status.state !in setOf(SttState.IMPORTING, SttState.VALIDATING, SttState.INITIALIZING))
         } else {
+            if (status.installedModelBytes > 0) Text("Model installed • ${formatBytes(status.installedModelBytes)}", style = VokieTheme.typography.caption, color = VokieTheme.colors.success, modifier = Modifier.padding(top = 10.dp))
             Surface(
                 shape = RoundedCornerShape(18.dp),
                 color = if (status.state == SttState.LISTENING) VokieTheme.colors.alert.copy(alpha = .18f) else VokieTheme.colors.accent.copy(alpha = .12f),
                 border = BorderStroke(1.dp, if (status.state == SttState.LISTENING) VokieTheme.colors.alert else VokieTheme.colors.accent.copy(alpha = .55f)),
-                modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp).padding(top = 14.dp).then(voiceModifier).semantics { contentDescription = if (canSpeak) "Hold to speak in ${language.nativeName}" else "Voice input unavailable: ${status.state.name}" },
+                modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp).padding(top = 14.dp).then(voiceModifier).semantics { contentDescription = if (canSpeak) if (pushToTalk) "Hold to speak in ${language.nativeName}" else "Tap to speak in ${language.nativeName}" else "Voice input unavailable: ${status.state.name}" },
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, modifier = Modifier.padding(16.dp)) {
                     Icon(if (status.state == SttState.LISTENING) Icons.Default.GraphicEq else Icons.Default.Mic, null, Modifier.size(34.dp), tint = if (status.state == SttState.LISTENING) VokieTheme.colors.alert else VokieTheme.colors.accent)
                     Text(when (status.state) {
                         SttState.LISTENING -> status.vadState.name.replace('_', ' ')
                         SttState.PROCESSING -> "TRANSCRIBING LOCALLY"
-                        else -> if (microphoneGranted) "HOLD TO SPEAK" else "MICROPHONE PERMISSION REQUIRED"
+                        SttState.IMPORTING -> "IMPORTING MODEL"
+                        SttState.VALIDATING -> "VALIDATING MODEL"
+                        SttState.INITIALIZING -> "INITIALIZING MODEL"
+                        else -> if (microphoneGranted) if (pushToTalk) "HOLD TO SPEAK" else "TAP TO SPEAK" else "MICROPHONE PERMISSION REQUIRED"
                     }, style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 8.dp))
-                    Text("Release to transcribe • silence finalizes after 1.2 seconds", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center)
+                    Text(if (pushToTalk) "Release to transcribe • silence finalizes after 1.2 seconds" else "Tap once to speak • silence finalizes after 1.2 seconds", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center)
                 }
             }
             if (!microphoneGranted) {
@@ -659,27 +685,96 @@ private fun EmptyState(icon: ImageVector, title: String, detail: String, modifie
 }
 
 @Composable
-fun MapScreen() {
+fun MapScreen(vm: MapViewModel = viewModel()) {
+    val status by vm.status.collectAsState()
+    val points by vm.points.collectAsState()
+    val mapPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::importRegion) }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item { ScreenHeader("Offline map", "Local safety information without an internet dependency.") }
         item {
             VokiePanel(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) { SectionLabel("MAP STORAGE"); StatusBadge("NOT DOWNLOADED", VokieTheme.colors.warning) }
-                Box(Modifier.fillMaxWidth().height(210.dp).padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(VokieTheme.colors.background).border(1.dp, VokieTheme.colors.border, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.Map, null, Modifier.size(42.dp), tint = VokieTheme.colors.textSecondary); Text("No offline region", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 10.dp)); Text("Shelters, hospitals, and hazard zones require downloaded map data.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)) }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    SectionLabel("MAP STORAGE")
+                    StatusBadge(status.state.name.replace('_', ' '), when (status.state) {
+                        MapRegionState.READY -> VokieTheme.colors.success
+                        MapRegionState.DOWNLOADING -> VokieTheme.colors.accent
+                        MapRegionState.FAILED -> VokieTheme.colors.alert
+                        else -> VokieTheme.colors.warning
+                    }, loading = status.state == MapRegionState.DOWNLOADING)
                 }
-                PrimaryAction("DOWNLOAD REGION", Icons.Default.Download, onClick = {}, enabled = false, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
-                Text("Offline map downloads are not implemented in this build.", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
+                Text(status.region.description, style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 10.dp))
+                if (status.state == MapRegionState.READY && points.isNotEmpty()) {
+                    OfflineMapCanvas(points, Modifier.fillMaxWidth().height(260.dp).padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(VokieTheme.colors.background).border(1.dp, VokieTheme.colors.border, RoundedCornerShape(12.dp)))
+                    Text("${points.size} local points • last updated ${status.lastUpdated?.let { java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(it)) } ?: "unknown"}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
+                } else {
+                    Box(Modifier.fillMaxWidth().height(210.dp).padding(top = 16.dp).clip(RoundedCornerShape(12.dp)).background(VokieTheme.colors.background).border(1.dp, VokieTheme.colors.border, RoundedCornerShape(12.dp)), contentAlignment = Alignment.Center) {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Default.Map, null, Modifier.size(42.dp), tint = VokieTheme.colors.textSecondary); Text(if (status.state == MapRegionState.DOWNLOADING) "Downloading region..." else "No offline region", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 10.dp)); Text("Shelters, hospitals, and hazard zones require downloaded local map data.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(horizontal = 24.dp, vertical = 6.dp)) }
+                    }
+                }
+                when (status.state) {
+                    MapRegionState.NOT_DOWNLOADED, MapRegionState.FAILED, MapRegionState.UPDATE_AVAILABLE -> {
+                        PrimaryAction("DOWNLOAD BASELINE REGION", Icons.Default.Download, onClick = vm::downloadDefault, enabled = status.state != MapRegionState.DOWNLOADING, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
+                        SecondaryAction("IMPORT REGION PACK (ZIP)", Icons.Default.FolderOpen, onClick = { mapPicker.launch(arrayOf("application/zip", "application/octet-stream")) }, enabled = status.state != MapRegionState.DOWNLOADING, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+                    }
+                    MapRegionState.READY -> {
+                        SecondaryAction("IMPORT NEW REGION PACK", Icons.Default.FolderOpen, onClick = { mapPicker.launch(arrayOf("application/zip", "application/octet-stream")) }, modifier = Modifier.fillMaxWidth().padding(top = 14.dp))
+                        TextButton(onClick = vm::deleteRegion, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("DELETE OFFLINE REGION", color = VokieTheme.colors.alert) }
+                    }
+                    MapRegionState.DOWNLOADING -> Unit
+                }
+                status.failure?.let { Text(it.userMessage, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(top = 10.dp)) }
+                if (status.installedBytes > 0) Text("Installed size • ${formatBytes(status.installedBytes)}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp))
             }
         }
         item {
-            Column(Modifier.padding(20.dp)) { SectionLabel("MAP LEGEND"); LegendRow(VokieTheme.colors.accent, "Current location"); LegendRow(VokieTheme.colors.success, "Shelters and hospitals"); LegendRow(VokieTheme.colors.alert, "Hazard zones") }
+            Column(Modifier.padding(20.dp)) { SectionLabel("MAP LEGEND"); LegendRow(VokieTheme.colors.accent, "Current location"); LegendRow(VokieTheme.colors.success, "Shelters and hospitals"); LegendRow(VokieTheme.colors.alert, "Hazard zones"); LegendRow(VokieTheme.colors.info, "Water / relief") }
+        }
+    }
+}
+
+@Composable
+private fun OfflineMapCanvas(points: List<com.vokie.map.MapPoint>, modifier: Modifier = Modifier) {
+    if (points.isEmpty()) return
+    val minLat = points.minOf { it.lat }
+    val maxLat = points.maxOf { it.lat }
+    val minLon = points.minOf { it.lon }
+    val maxLon = points.maxOf { it.lon }
+    val padding = 0.1
+    val latRange = (maxLat - minLat).coerceAtLeast(0.001)
+    val lonRange = (maxLon - minLon).coerceAtLeast(0.001)
+    val background = VokieTheme.colors.background
+    val border = VokieTheme.colors.border
+    val textPrimary = VokieTheme.colors.textPrimary
+    androidx.compose.foundation.Canvas(modifier = modifier.semantics { contentDescription = "Offline map showing ${points.size} local points of interest" }) {
+        val w = size.width
+        val h = size.height
+        drawRect(background)
+        val gridColor = border.copy(alpha = .5f)
+        for (i in 0..4) {
+            val x = w * i / 4f
+            val y = h * i / 4f
+            drawLine(gridColor, androidx.compose.ui.geometry.Offset(x, 0f), androidx.compose.ui.geometry.Offset(x, h), strokeWidth = 1f)
+            drawLine(gridColor, androidx.compose.ui.geometry.Offset(0f, y), androidx.compose.ui.geometry.Offset(w, y), strokeWidth = 1f)
+        }
+        points.forEach { p ->
+            val x = (((p.lon - minLon) / lonRange) * (1 - 2 * padding) + padding).toFloat() * w
+            val y = (1f - (((p.lat - minLat) / latRange) * (1 - 2 * padding) + padding).toFloat()) * h
+            val color = android.graphics.Color.parseColor(p.type.colorHex()).let { Color(it) }
+            drawCircle(color, radius = 10f, center = androidx.compose.ui.geometry.Offset(x, y))
+            drawCircle(textPrimary.copy(alpha = .6f), radius = 10f, center = androidx.compose.ui.geometry.Offset(x, y), style = androidx.compose.ui.graphics.drawscope.Stroke(width = 2f))
         }
     }
 }
 
 @Composable
 private fun LegendRow(color: Color, label: String) { Row(Modifier.fillMaxWidth().padding(top = 10.dp), verticalAlignment = Alignment.CenterVertically) { Box(Modifier.size(10.dp).clip(CircleShape).background(color)); Spacer(Modifier.width(10.dp)); Text(label, style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) } }
+
+private fun formatBytes(bytes: Long): String = when {
+    bytes >= 1_000_000_000 -> String.format(java.util.Locale.US, "%.2f GB", bytes / 1_000_000_000.0)
+    bytes >= 1_000_000 -> String.format(java.util.Locale.US, "%.1f MB", bytes / 1_000_000.0)
+    bytes >= 1_000 -> String.format(java.util.Locale.US, "%.1f KB", bytes / 1_000.0)
+    else -> "$bytes B"
+}
 
 @Composable
 fun AlertsScreen() {
@@ -704,13 +799,23 @@ private fun SeverityKey(label: String, color: Color, description: String) { Row(
 private data class SettingInfo(val icon: ImageVector, val title: String, val description: String, val value: String)
 
 @Composable
-fun MoreScreen(vm: CommunicationViewModel = viewModel()) {
+fun MoreScreen(vm: CommunicationViewModel = viewModel(), mapVm: MapViewModel = viewModel()) {
     val bluetooth by vm.connectionState.collectAsState()
     val stt by vm.sttStatus.collectAsState()
     val tts by vm.ttsStatus.collectAsState()
     val ttsSpeed by vm.ttsSpeed.collectAsState()
     val language by vm.selectedSttLanguage.collectAsState()
+    val mapStatus by mapVm.status.collectAsState()
+    val mapPoints by mapVm.points.collectAsState()
     val bt = bluetoothUi(bluetooth)
+    val mapValue = when (mapStatus.state) {
+        com.vokie.map.MapRegionState.READY -> "READY"
+        com.vokie.map.MapRegionState.DOWNLOADING -> "DOWNLOADING"
+        com.vokie.map.MapRegionState.FAILED -> "FAILED"
+        com.vokie.map.MapRegionState.UPDATE_AVAILABLE -> "UPDATE"
+        com.vokie.map.MapRegionState.NOT_DOWNLOADED -> "NOT INSTALLED"
+    }
+    val mapDetail = if (mapStatus.state == com.vokie.map.MapRegionState.READY) "${mapPoints.size} points • ${formatBytes(mapStatus.installedBytes)}" else mapStatus.region.description
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item { ScreenHeader("Settings and resources", "Communication capability, offline storage, and accessibility.") }
         item { SettingsGroup("COMMUNICATION", listOf(
@@ -721,8 +826,8 @@ fun MoreScreen(vm: CommunicationViewModel = viewModel()) {
             SettingInfo(Icons.Default.GraphicEq, "Ultrasonic", "Experimental audio transport", "PLANNED"),
         )) }
         item { SettingsGroup("OFFLINE", listOf(
-            SettingInfo(Icons.Default.Map, "Offline map storage", "No region downloaded", "EMPTY"),
-            SettingInfo(Icons.Default.Folder, "Downloaded regions", "Offline region management", "UNAVAILABLE"),
+            SettingInfo(Icons.Default.Map, "Offline map storage", mapDetail, mapValue),
+            SettingInfo(Icons.Default.Folder, "Downloaded regions", if (mapStatus.state == com.vokie.map.MapRegionState.READY) "${mapPoints.size} local POIs" else "No region installed", if (mapStatus.state == com.vokie.map.MapRegionState.READY) "READY" else "EMPTY"),
         )) }
         item { SettingsGroup("PERSONALISATION", listOf(
             SettingInfo(Icons.Default.Language, "Language", "Current STT and message language", language.nativeName),
@@ -764,6 +869,6 @@ private fun AboutCard() {
         }
         HorizontalDivider(Modifier.padding(vertical = 16.dp), color = VokieTheme.colors.border)
         Text("Offline multilingual emergency communication.", style = VokieTheme.typography.body, color = VokieTheme.colors.textPrimary)
-        Text("Open source  •  Offline-first\nBluetooth — Implemented\nWi-Fi Direct — Planned", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 10.dp))
+        Text("Bluetooth RFCOMM peer transport — implemented\nWhisper.cpp STT — implemented\nMMS-TTS via sherpa-onnx — implemented\nOffline map regions — implemented\nWi-Fi Direct and ultrasonic — planned", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 10.dp))
     }
 }

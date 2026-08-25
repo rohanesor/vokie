@@ -60,7 +60,7 @@ enum class TtsLanguage(
     }
 }
 
-enum class TtsState { UNINITIALIZED, INITIALIZING, READY, SYNTHESIZING, PLAYING, COMPLETED, ERROR, MODEL_MISSING, MODEL_LOAD_FAILED }
+enum class TtsState { UNINITIALIZED, MODEL_MISSING, IMPORTING, VALIDATING, INITIALIZING, READY, SYNTHESIZING, PLAYING, COMPLETED, ERROR, MODEL_LOAD_FAILED }
 enum class TtsErrorCode { MODEL_MISSING, MODEL_LOAD_FAILED, MODEL_INVALID, UNSUPPORTED_LANGUAGE, SYNTHESIS_FAILED, AUDIO_OUTPUT_FAILED, AUDIO_FOCUS_FAILED, OUT_OF_MEMORY }
 enum class MessageTtsState { QUEUED, SYNTHESIZING, PLAYING, COMPLETED, FAILED }
 
@@ -88,6 +88,7 @@ data class TtsStatus(
     val result: TtsResult? = null,
     val failure: TtsFailure? = null,
     val modelLoadTimeMs: Long? = null,
+    val installedModelBytes: Long = 0,
 )
 
 fun calculateTtsRealTimeFactor(synthesisTimeMs: Long, audioDurationMs: Long): Double? =
@@ -101,6 +102,7 @@ fun validateTtsSpeed(speed: Float): Float {
 interface TtsEngine {
     val status: StateFlow<TtsStatus>
     suspend fun initialize(language: TtsLanguage)
+    suspend fun install(language: TtsLanguage, installModel: suspend () -> Unit)
     suspend fun synthesize(text: String, language: TtsLanguage, speed: Float = DEFAULT_TTS_SPEED): Pair<AudioBuffer, TtsResult>
     suspend fun play(audio: AudioBuffer, emergency: Boolean = false)
     suspend fun stop()
@@ -113,14 +115,17 @@ internal class TtsStateMachine(initial: TtsState = TtsState.UNINITIALIZED) {
 
     fun moveTo(next: TtsState) {
         val allowed = when (state) {
-            TtsState.UNINITIALIZED -> setOf(TtsState.INITIALIZING)
+            TtsState.UNINITIALIZED -> setOf(TtsState.INITIALIZING, TtsState.MODEL_MISSING)
+            TtsState.MODEL_MISSING -> setOf(TtsState.IMPORTING, TtsState.INITIALIZING, TtsState.UNINITIALIZED)
+            TtsState.IMPORTING -> setOf(TtsState.VALIDATING, TtsState.ERROR, TtsState.MODEL_MISSING)
+            TtsState.VALIDATING -> setOf(TtsState.INITIALIZING, TtsState.ERROR, TtsState.MODEL_MISSING)
             TtsState.INITIALIZING -> setOf(TtsState.READY, TtsState.MODEL_MISSING, TtsState.MODEL_LOAD_FAILED, TtsState.ERROR, TtsState.UNINITIALIZED)
             TtsState.READY -> setOf(TtsState.SYNTHESIZING, TtsState.PLAYING, TtsState.INITIALIZING, TtsState.UNINITIALIZED)
             TtsState.SYNTHESIZING -> setOf(TtsState.PLAYING, TtsState.READY, TtsState.ERROR, TtsState.UNINITIALIZED)
             TtsState.PLAYING -> setOf(TtsState.COMPLETED, TtsState.ERROR, TtsState.READY, TtsState.UNINITIALIZED)
             TtsState.COMPLETED -> setOf(TtsState.SYNTHESIZING, TtsState.INITIALIZING, TtsState.READY, TtsState.UNINITIALIZED)
-            TtsState.ERROR -> setOf(TtsState.INITIALIZING, TtsState.SYNTHESIZING, TtsState.READY, TtsState.UNINITIALIZED)
-            TtsState.MODEL_MISSING, TtsState.MODEL_LOAD_FAILED -> setOf(TtsState.INITIALIZING, TtsState.UNINITIALIZED)
+            TtsState.ERROR -> setOf(TtsState.IMPORTING, TtsState.INITIALIZING, TtsState.SYNTHESIZING, TtsState.READY, TtsState.UNINITIALIZED)
+            TtsState.MODEL_LOAD_FAILED -> setOf(TtsState.IMPORTING, TtsState.INITIALIZING, TtsState.UNINITIALIZED)
         }
         check(next in allowed) { "Invalid TTS transition: $state -> $next" }
         state = next
