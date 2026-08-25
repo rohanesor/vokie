@@ -25,6 +25,8 @@ Cloud STT, cloud TTS, accounts, servers, and internet delivery are not used.
 - Connector/listener roles, compact binary message protocol, persistence-before-ACK and failure states
 - Room-backed message, peer and transport-event persistence with duplicate protection
 - Process-independent outbound queue with bounded retries and interrupted-send recovery
+- Native AudioRecord capture, bounded energy VAD, replaceable local model store, and whisper.cpp JNI inference
+- Persistent selection for ten Whisper/message languages and real STT timing/RTF metrics
 - Gradle wrapper and reproducible debug build
 - CI and tag-triggered release workflow definitions
 - Private S3 + CloudFront OAC infrastructure definition and static download site
@@ -32,11 +34,11 @@ Cloud STT, cloud TTS, accounts, servers, and internet delivery are not used.
 ### IN PROGRESS
 
 - Physical two-device interoperability, disconnect and reconnect testing
+- Physical multilingual STT accuracy, VAD threshold, latency, and memory testing
 - Diagnostics presentation for persisted transport metrics
 
 ### PLANNED
 
-- Local multilingual STT/VAD
 - Language-managed local TTS models
 - Wi-Fi Direct transport and fallback selection
 - Multi-hop relay and ultrasonic transport

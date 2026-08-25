@@ -5,6 +5,10 @@ import com.vokie.communication.*
 import com.vokie.data.RoomMessageRepository
 import com.vokie.data.local.*
 import com.vokie.domain.model.TransportType
+import com.vokie.stt.SpeechToTextUseCase
+import com.vokie.stt.SttLanguagePreferences
+import com.vokie.stt.SttState
+import com.vokie.stt.WhisperSttEngine
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.collectLatest
@@ -17,6 +21,9 @@ class VokieApplication : Application() {
     lateinit var bluetoothTransport: BluetoothTransport; private set
     lateinit var transportManager: TransportManager; private set
     lateinit var outboundProcessor: OutboundMessageProcessor; private set
+    lateinit var sttEngine: WhisperSttEngine; private set
+    lateinit var sttLanguagePreferences: SttLanguagePreferences; private set
+    lateinit var speechToText: SpeechToTextUseCase; private set
     lateinit var deviceId: String; private set
 
     override fun onCreate() {
@@ -29,6 +36,10 @@ class VokieApplication : Application() {
         bluetoothTransport = BluetoothTransport(applicationContext, applicationScope)
         transportManager = TransportManager(bluetoothTransport)
         outboundProcessor = OutboundMessageProcessor(messageRepository, transportManager, database.transportEvents(), applicationScope)
+        sttEngine = WhisperSttEngine(applicationContext)
+        sttLanguagePreferences = SttLanguagePreferences(applicationContext)
+        speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)
+        applicationScope.launch { speechToText.initialize() }
 
         applicationScope.launch {
             transportManager.incomingMessages().collect { message ->
@@ -53,5 +64,19 @@ class VokieApplication : Application() {
             database.messages().recoverInterrupted()
             outboundProcessor.start()
         }
+    }
+
+    override fun onLowMemory() {
+        releaseIdleStt()
+        super.onLowMemory()
+    }
+
+    override fun onTrimMemory(level: Int) {
+        if (level >= TRIM_MEMORY_COMPLETE) releaseIdleStt()
+        super.onTrimMemory(level)
+    }
+
+    private fun releaseIdleStt() {
+        if (sttEngine.status.value.state in setOf(SttState.READY, SttState.RESULT, SttState.ERROR)) sttEngine.release()
     }
 }

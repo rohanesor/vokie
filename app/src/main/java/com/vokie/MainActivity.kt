@@ -1,11 +1,17 @@
 package com.vokie
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +37,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -38,11 +45,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.vokie.communication.BluetoothPermission
 import com.vokie.communication.VokieProtocol
 import com.vokie.domain.model.*
+import com.vokie.stt.*
 import com.vokie.ui.communication.CommunicationViewModel
 import com.vokie.ui.theme.*
 
@@ -212,6 +221,7 @@ private fun SecondaryAction(text: String, icon: ImageVector, onClick: () -> Unit
 fun HomeScreen(onCommunicate: () -> Unit, onSos: () -> Unit, vm: CommunicationViewModel = viewModel()) {
     val bluetooth by vm.connectionState.collectAsState()
     val messages by vm.messages.collectAsState()
+    val stt by vm.sttStatus.collectAsState()
     val bt = bluetoothUi(bluetooth)
     val queued = messages.count { it.deliveryState == DeliveryState.QUEUED || it.deliveryState == DeliveryState.RETRYING }
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
@@ -239,27 +249,27 @@ fun HomeScreen(onCommunicate: () -> Unit, onSos: () -> Unit, vm: CommunicationVi
                 if (queued > 0) Text("$queued message${if (queued == 1) "" else "s"} securely queued", style = VokieTheme.typography.caption, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 12.dp))
             }
         }
-        item { VoiceControl(onCommunicate) }
+        item { VoiceControl(onCommunicate, stt) }
         item { SosButton(onSos) }
     }
 }
 
 @Composable
-private fun VoiceControl(onCommunicate: () -> Unit) {
+private fun VoiceControl(onCommunicate: () -> Unit, stt: SttStatus) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         SectionLabel("VOICE COMMUNICATION")
         Spacer(Modifier.height(16.dp))
         Box(Modifier.size(172.dp).border(2.dp, VokieTheme.colors.accent.copy(alpha = .38f), CircleShape).padding(10.dp), contentAlignment = Alignment.Center) {
-            Surface(shape = CircleShape, color = VokieTheme.colors.surface, border = BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.fillMaxSize().semantics { contentDescription = "Voice input unavailable. Local speech recognition is not installed." }) {
+            Surface(shape = CircleShape, color = VokieTheme.colors.surface, border = BorderStroke(1.dp, VokieTheme.colors.border), modifier = Modifier.fillMaxSize().semantics { contentDescription = "Open offline voice communication. STT state ${stt.state.name}." }) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                    Icon(Icons.Default.MicOff, null, Modifier.size(38.dp), tint = VokieTheme.colors.textSecondary)
+                    Icon(if (stt.state == SttState.MODEL_MISSING) Icons.Default.MicOff else Icons.Default.Mic, null, Modifier.size(38.dp), tint = if (stt.state == SttState.READY) VokieTheme.colors.accent else VokieTheme.colors.textSecondary)
                     Spacer(Modifier.height(8.dp)); Text("VOICE INPUT", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary)
-                    Text("NOT INSTALLED", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.warning)
+                    Text(stt.state.name.replace('_', ' '), style = VokieTheme.typography.labelSmall, color = if (stt.state == SttState.READY) VokieTheme.colors.success else VokieTheme.colors.warning)
                 }
             }
         }
-        Text("Local speech recognition is not installed yet. Use the real text communication path below.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp).widthIn(max = 420.dp))
-        PrimaryAction("OPEN COMMUNICATE", Icons.AutoMirrored.Filled.Chat, onCommunicate, Modifier.fillMaxWidth().padding(top = 16.dp))
+        Text(if (stt.state == SttState.MODEL_MISSING) "STT model not installed. Open Communicate to import the verified local model." else "Speech is captured and transcribed locally. Audio never leaves this phone.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp).widthIn(max = 420.dp))
+        PrimaryAction("OPEN VOICE COMMUNICATION", Icons.AutoMirrored.Filled.Chat, onCommunicate, Modifier.fillMaxWidth().padding(top = 16.dp))
     }
 }
 
@@ -316,13 +326,25 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     val connectedPeer by vm.connectedPeerId.collectAsState()
     val messages by vm.messages.collectAsState()
     val error by vm.error.collectAsState()
+    val stt by vm.sttStatus.collectAsState()
+    val selectedLanguage by vm.selectedSttLanguage.collectAsState()
     val bt = bluetoothUi(state)
-    DisposableEffect(vm) { onDispose { vm.stopDiscovery() } }
+    LaunchedEffect(vm) { vm.initializeStt() }
+    DisposableEffect(vm) { onDispose { vm.stopDiscovery(); vm.stopVoice() } }
     var composer by rememberSaveable { mutableStateOf("") }
+    var microphoneGranted by remember { mutableStateOf(ContextCompat.checkSelfPermission(context, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) }
+    var microphoneDenied by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(stt.result?.timestamp) { stt.result?.let { composer = it.text } }
     var pendingPeer by remember { mutableStateOf<String?>(null) }
     var pendingVisibility by remember { mutableStateOf(false) }
     val discoverability = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_CANCELED) vm.reportError("This phone was not made visible. It can still connect to known peers.")
+    }
+    val modelPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::installSttModel) }
+    val microphonePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        microphoneGranted = granted
+        microphoneDenied = !granted
+        if (!granted) vm.reportError("Microphone permission required for voice messaging.")
     }
     val permissions = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { result ->
         if (result.values.all { it }) when {
@@ -336,7 +358,21 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     }
     val actionsEnabled = state != TransportConnectionState.UNAVAILABLE && state != TransportConnectionState.BLUETOOTH_DISABLED
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 28.dp)) {
-        item { ScreenHeader("Communicate", "Real nearby text communication with persistent offline queueing.") }
+        item { ScreenHeader("Communicate", "Offline voice-to-text and real nearby communication.") }
+        item {
+            SttPanel(
+                status = stt,
+                language = selectedLanguage,
+                microphoneGranted = microphoneGranted,
+                microphoneDenied = microphoneDenied,
+                onLanguageSelected = vm::selectSttLanguage,
+                onInstallModel = { modelPicker.launch(arrayOf("application/octet-stream", "application/x-binary", "*/*")) },
+                onRequestMicrophone = { microphonePermission.launch(Manifest.permission.RECORD_AUDIO) },
+                onOpenSettings = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))) },
+                onStart = vm::startVoice,
+                onStop = vm::stopVoice,
+            )
+        }
         item {
             VokiePanel(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
@@ -409,6 +445,87 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
         }
         if (messages.isEmpty()) item { EmptyState(Icons.Default.Forum, "No messages yet", "Messages created or received on this phone will appear here.", Modifier.padding(horizontal = 20.dp, vertical = 10.dp)) }
         else items(messages, key = { it.id }) { message -> MessageCard(message, onRetry = { vm.retry(message.id) }) }
+    }
+}
+
+@Composable
+private fun SttPanel(
+    status: SttStatus,
+    language: SttLanguage,
+    microphoneGranted: Boolean,
+    microphoneDenied: Boolean,
+    onLanguageSelected: (SttLanguage) -> Unit,
+    onInstallModel: () -> Unit,
+    onRequestMicrophone: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
+) {
+    var languageMenu by remember { mutableStateOf(false) }
+    val canSpeak = microphoneGranted && status.state in setOf(SttState.READY, SttState.RESULT, SttState.ERROR)
+    val voiceModifier = if (canSpeak) {
+        Modifier.pointerInput(language, status.state) {
+            detectTapGestures(onPress = {
+                onStart()
+                tryAwaitRelease()
+                onStop()
+            })
+        }
+    } else Modifier
+    VokiePanel(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                SectionLabel("OFFLINE SPEECH TO TEXT")
+                Text("whisper.cpp • tiny multilingual Q5_1 • local only", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp))
+            }
+            StatusBadge(status.state.name.replace('_', ' '), when (status.state) {
+                SttState.READY, SttState.RESULT -> VokieTheme.colors.success
+                SttState.LISTENING, SttState.PROCESSING, SttState.INITIALIZING -> VokieTheme.colors.accent
+                SttState.ERROR -> VokieTheme.colors.alert
+                else -> VokieTheme.colors.warning
+            }, loading = status.state == SttState.INITIALIZING || status.state == SttState.PROCESSING)
+        }
+        Box(Modifier.fillMaxWidth().padding(top = 14.dp)) {
+            SecondaryAction(language.nativeName, Icons.Default.Language, { languageMenu = true }, enabled = status.state !in setOf(SttState.LISTENING, SttState.PROCESSING), modifier = Modifier.fillMaxWidth())
+            DropdownMenu(expanded = languageMenu, onDismissRequest = { languageMenu = false }) {
+                SttLanguage.entries.forEach { item ->
+                    DropdownMenuItem(text = { Text("${item.nativeName}  •  ${item.whisperCode}") }, onClick = { onLanguageSelected(item); languageMenu = false }, trailingIcon = { if (item == language) Icon(Icons.Default.Check, null) })
+                }
+            }
+        }
+        if (status.state == SttState.MODEL_MISSING || status.failure?.code == SttErrorCode.MODEL_LOAD_FAILED) {
+            Text("STT MODEL NOT INSTALLED. Select the verified ggml-tiny-q5_1.bin file from local storage. Vokie will not download it.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 14.dp))
+            PrimaryAction("INSTALL LOCAL STT MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 12.dp))
+        } else {
+            Surface(
+                shape = RoundedCornerShape(18.dp),
+                color = if (status.state == SttState.LISTENING) VokieTheme.colors.alert.copy(alpha = .18f) else VokieTheme.colors.accent.copy(alpha = .12f),
+                border = BorderStroke(1.dp, if (status.state == SttState.LISTENING) VokieTheme.colors.alert else VokieTheme.colors.accent.copy(alpha = .55f)),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 112.dp).padding(top = 14.dp).then(voiceModifier).semantics { contentDescription = if (canSpeak) "Hold to speak in ${language.nativeName}" else "Voice input unavailable: ${status.state.name}" },
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center, modifier = Modifier.padding(16.dp)) {
+                    Icon(if (status.state == SttState.LISTENING) Icons.Default.GraphicEq else Icons.Default.Mic, null, Modifier.size(34.dp), tint = if (status.state == SttState.LISTENING) VokieTheme.colors.alert else VokieTheme.colors.accent)
+                    Text(when (status.state) {
+                        SttState.LISTENING -> status.vadState.name.replace('_', ' ')
+                        SttState.PROCESSING -> "TRANSCRIBING LOCALLY"
+                        else -> if (microphoneGranted) "HOLD TO SPEAK" else "MICROPHONE PERMISSION REQUIRED"
+                    }, style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 8.dp))
+                    Text("Release to transcribe • silence finalizes after 1.2 seconds", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center)
+                }
+            }
+            if (!microphoneGranted) {
+                Text("Microphone permission required for voice messaging. Audio is processed only on this phone.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 12.dp))
+                PrimaryAction("GRANT MICROPHONE PERMISSION", Icons.Default.Mic, onRequestMicrophone, Modifier.fillMaxWidth().padding(top = 10.dp))
+                if (microphoneDenied) TextButton(onClick = onOpenSettings, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text("OPEN APP SETTINGS") }
+            }
+        }
+        status.failure?.let { Text(it.userMessage, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(top = 12.dp)) }
+        status.result?.let { result ->
+            Text("You said:", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 14.dp))
+            Text("“${result.text}”", style = VokieTheme.typography.bodyLarge, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 5.dp))
+            Text("Audio ${result.audioDurationMs} ms • STT ${result.processingTimeMs} ms • RTF ${result.realTimeFactor?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "unavailable"}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 7.dp))
+        }
+        status.modelLoadTimeMs?.let { Text("Model load ${it} ms", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 7.dp)) }
     }
 }
 
@@ -498,12 +615,14 @@ private data class SettingInfo(val icon: ImageVector, val title: String, val des
 @Composable
 fun MoreScreen(vm: CommunicationViewModel = viewModel()) {
     val bluetooth by vm.connectionState.collectAsState()
+    val stt by vm.sttStatus.collectAsState()
+    val language by vm.selectedSttLanguage.collectAsState()
     val bt = bluetoothUi(bluetooth)
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item { ScreenHeader("Settings and resources", "Communication capability, offline storage, and accessibility.") }
         item { SettingsGroup("COMMUNICATION", listOf(
             SettingInfo(Icons.Default.Emergency, "Emergency communication", "SOS messages use the persistent outbound queue", "ACTIVE"),
-            SettingInfo(Icons.AutoMirrored.Filled.Message, "Communication mode", "Real text messaging while local STT is unavailable", "TEXT"),
+            SettingInfo(Icons.AutoMirrored.Filled.Message, "Communication mode", "Local speech becomes text before using the existing queue", "VOICE + TEXT"),
             SettingInfo(Icons.Default.Bluetooth, "Bluetooth", bt.detail, bt.label),
             SettingInfo(Icons.Default.Wifi, "Wi-Fi Direct", "Secondary peer transport", "PLANNED"),
             SettingInfo(Icons.Default.GraphicEq, "Ultrasonic", "Experimental audio transport", "PLANNED"),
@@ -513,8 +632,8 @@ fun MoreScreen(vm: CommunicationViewModel = viewModel()) {
             SettingInfo(Icons.Default.Folder, "Downloaded regions", "Offline region management", "UNAVAILABLE"),
         )) }
         item { SettingsGroup("PERSONALISATION", listOf(
-            SettingInfo(Icons.Default.Language, "Language", "Current message language", "ENGLISH"),
-            SettingInfo(Icons.Default.RecordVoiceOver, "Voice settings", "Local speech engines are not installed", "UNAVAILABLE"),
+            SettingInfo(Icons.Default.Language, "Language", "Current STT and message language", language.nativeName),
+            SettingInfo(Icons.Default.RecordVoiceOver, "Voice settings", "Offline whisper.cpp multilingual recognition", stt.state.name.replace('_', ' ')),
             SettingInfo(Icons.Default.AccessibilityNew, "Accessibility", "Uses Android text scaling and screen-reader semantics", "SYSTEM"),
             SettingInfo(Icons.Default.Vibration, "Haptic feedback", "Confirmation feedback for critical actions", "ENABLED"),
             SettingInfo(Icons.Default.DarkMode, "Appearance", "Dark emergency interface", "DARK"),
