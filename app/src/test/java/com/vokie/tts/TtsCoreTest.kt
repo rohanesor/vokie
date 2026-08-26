@@ -18,21 +18,7 @@ class TtsCoreTest {
             assertEquals(iso, language.iso6393)
             assertEquals(language, TtsLanguage.fromIso6393(iso))
         }
-        assertEquals(setOf(TtsLanguage.ENGLISH), TtsLanguage.entries.filter { it.hasOfficialSherpaMmsPackage }.toSet())
-    }
-
-    @Test fun officialEnglishPackageMetadataMatchesVerifiedRelease() {
-        val pack = requireNotNull(TtsLanguage.ENGLISH.modelPackage)
-        assertEquals("vits-mms-eng.tar.bz2", pack.officialArchiveName)
-        assertEquals(107_737_708L, pack.officialArchiveSizeBytes)
-        assertEquals("model.onnx", pack.model.fileName)
-        assertEquals(114_016_948L, pack.model.sizeBytes)
-        assertEquals("tokens.txt", pack.tokens.fileName)
-        assertEquals(303L, pack.tokens.sizeBytes)
-        assertNull(pack.lexicon)
-        assertFalse(pack.dataFilesRequired)
-        assertNull(pack.quantization)
-        assertEquals("CC-BY-NC-4.0", pack.license)
+        assertEquals(10, TtsLanguage.entries.size)
     }
 
     @Test fun stateMachineRequiresInitializationAndRealSynthesisOrder() {

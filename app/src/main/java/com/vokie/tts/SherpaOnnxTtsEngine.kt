@@ -36,21 +36,6 @@ class SherpaOnnxTtsEngine(
         initializeLocked(language)
     }
 
-    override suspend fun install(language: TtsLanguage, installModel: suspend () -> Unit) = operationMutex.withLock {
-        releaseModel()
-        moveTo(TtsState.IMPORTING, language)
-        try {
-            moveTo(TtsState.VALIDATING, language)
-            installModel()
-            moveTo(TtsState.INITIALIZING, language)
-            initializeLocked(language)
-        } catch (error: Throwable) {
-            val failure = mapTtsFailure(error, TtsErrorCode.MODEL_INVALID, error.message ?: "The selected TTS model pack could not be installed.")
-            moveTo(TtsState.ERROR, language, failure = failure)
-            throw TtsException(failure.code, failure.userMessage, error)
-        }
-    }
-
     override suspend fun synthesize(text: String, language: TtsLanguage, speed: Float): Pair<AudioBuffer, TtsResult> = operationMutex.withLock {
         val normalized = text.trim()
         if (normalized.isEmpty() || normalized.length > MAX_TEXT_CHARS) throw TtsException(TtsErrorCode.SYNTHESIS_FAILED, "Speech text must contain 1 to $MAX_TEXT_CHARS characters.")

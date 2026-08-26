@@ -26,15 +26,9 @@ The tiny multilingual model is a hackathon-oriented size/latency choice. Accurac
 
 Configured language codes are `en`, `hi`, `gu`, `mr`, `kn`, `ml`, `ta`, `te`, `or`, and `bn` for English, Hindi, Gujarati, Marathi, Kannada, Malayalam, Tamil, Telugu, Odia, and Bengali.
 
-## Offline installation
+## Bundled installation
 
-No model binary is stored in Git or bundled into the APK. No model is downloaded at runtime. A user or managed deployment places the verified `ggml-tiny-q5_1.bin` artifact on the phone, chooses **Install local STT model**, and Android's system document picker copies it into private application storage:
-
-`files/stt-models/ggml-tiny-q5_1.bin`
-
-The installer uses a bounded copy, validates the pinned SHA-256, GGML magic, and size, then whisper.cpp validates the full model while creating its context. Invalid files are deleted. Until a valid model exists, the UI reports `STT MODEL NOT INSTALLED`.
-
-For production distribution, publish the independently checksummed model as a signed release artifact or preload it during a controlled APK/device provisioning step. Do not add it to normal Git history.
+The production APK contains the verified `ggml-tiny-q5_1.bin` asset. It is supplied only to the protected release build environment and is never committed to Git. On first launch `BundledModelStore` atomically extracts the APK asset to `files/models/stt/`, verifies its SHA-256 and size, and then whisper.cpp opens that local filesystem path. There is no model picker, downloader, cloud service, or user installation step. Interrupted extraction is discarded or resumed by checksum validation on the next launch.
 
 ## VAD and limits
 

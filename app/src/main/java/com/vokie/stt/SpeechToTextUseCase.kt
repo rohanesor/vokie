@@ -1,6 +1,5 @@
 package com.vokie.stt
 
-import android.net.Uri
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -13,7 +12,6 @@ class SpeechToTextUseCase(
     val selectedLanguage: Flow<SttLanguage> = languagePreferences.selectedLanguage
 
     suspend fun initialize() = engine.initialize()
-    suspend fun installModel(uri: Uri) = engine.installModel(uri)
     suspend fun selectLanguage(language: SttLanguage) = languagePreferences.select(language)
     suspend fun start(language: SttLanguage) = engine.start(language)
     suspend fun stop() = engine.stop()

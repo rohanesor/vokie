@@ -9,50 +9,21 @@ const val DEFAULT_TTS_SPEED = 1.0f
 const val MIN_TTS_SPEED = 0.75f
 const val MAX_TTS_SPEED = 1.5f
 
-data class TtsModelFile(val fileName: String, val sizeBytes: Long, val sha256: String)
-data class TtsModelPackage(
-    val officialArchiveName: String,
-    val officialArchiveSizeBytes: Long,
-    val officialArchiveSha256: String,
-    val model: TtsModelFile,
-    val tokens: TtsModelFile,
-    val lexicon: TtsModelFile? = null,
-    val dataFilesRequired: Boolean = false,
-    val quantization: String? = null,
-    val license: String,
-    val sourceUrl: String,
-)
-
 enum class TtsLanguage(
     val iso6393: String,
     val messageLanguage: VokieLanguage,
     val nativeName: String,
-    val modelPackage: TtsModelPackage?,
 ) {
-    ENGLISH(
-        "eng", VokieLanguage.EN, "English",
-        TtsModelPackage(
-            officialArchiveName = "vits-mms-eng.tar.bz2",
-            officialArchiveSizeBytes = 107_737_708,
-            officialArchiveSha256 = "8712cb52f71ee00bde27b8c18058d97a794fccf873c4629fbea0de87d31366b4",
-            model = TtsModelFile("model.onnx", 114_016_948, "e3a198f6a4473429bab138be040e7cd40d2cab7a31b6410ff0a94d5a7fbbc254"),
-            tokens = TtsModelFile("tokens.txt", 303, "dff08580748be688d9112d62d6352422c56d372dfe34b24ea3f66fa1b75cfaa9"),
-            quantization = null,
-            license = "CC-BY-NC-4.0",
-            sourceUrl = "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-mms-eng.tar.bz2",
-        ),
-    ),
-    HINDI("hin", VokieLanguage.HI, "हिन्दी", null),
-    GUJARATI("guj", VokieLanguage.GU, "ગુજરાતી", null),
-    MARATHI("mar", VokieLanguage.MR, "मराठी", null),
-    KANNADA("kan", VokieLanguage.KN, "ಕನ್ನಡ", null),
-    MALAYALAM("mal", VokieLanguage.ML, "മലയാളം", null),
-    TAMIL("tam", VokieLanguage.TA, "தமிழ்", null),
-    TELUGU("tel", VokieLanguage.TE, "తెలుగు", null),
-    ODIA("ory", VokieLanguage.OR, "ଓଡ଼ିଆ", null),
-    BENGALI("ben", VokieLanguage.BN, "বাংলা", null);
-
-    val hasOfficialSherpaMmsPackage: Boolean get() = modelPackage != null
+    ENGLISH("eng", VokieLanguage.EN, "English"),
+    HINDI("hin", VokieLanguage.HI, "हिन्दी"),
+    GUJARATI("guj", VokieLanguage.GU, "ગુજરાતી"),
+    MARATHI("mar", VokieLanguage.MR, "मराठी"),
+    KANNADA("kan", VokieLanguage.KN, "ಕನ್ನಡ"),
+    MALAYALAM("mal", VokieLanguage.ML, "മലയാളം"),
+    TAMIL("tam", VokieLanguage.TA, "தமிழ்"),
+    TELUGU("tel", VokieLanguage.TE, "తెలుగు"),
+    ODIA("ory", VokieLanguage.OR, "ଓଡ଼ିଆ"),
+    BENGALI("ben", VokieLanguage.BN, "বাংলা");
 
     companion object {
         fun fromMessageCode(code: String): TtsLanguage? = entries.firstOrNull { it.messageLanguage.code == code.uppercase() }
@@ -102,7 +73,6 @@ fun validateTtsSpeed(speed: Float): Float {
 interface TtsEngine {
     val status: StateFlow<TtsStatus>
     suspend fun initialize(language: TtsLanguage)
-    suspend fun install(language: TtsLanguage, installModel: suspend () -> Unit)
     suspend fun synthesize(text: String, language: TtsLanguage, speed: Float = DEFAULT_TTS_SPEED): Pair<AudioBuffer, TtsResult>
     suspend fun play(audio: AudioBuffer, emergency: Boolean = false)
     suspend fun stop()
