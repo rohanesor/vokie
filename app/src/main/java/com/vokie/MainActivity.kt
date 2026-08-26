@@ -272,7 +272,7 @@ private fun VoiceControl(onCommunicate: () -> Unit, stt: SttStatus) {
                 }
             }
         }
-        Text(if (stt.state == SttState.MODEL_MISSING) "STT model not installed. Open Communicate to import the verified local model." else "Speech is captured and transcribed locally. Audio never leaves this phone.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp).widthIn(max = 420.dp))
+        Text(if (stt.state == SttState.MODEL_MISSING) "Preparing the verified offline speech engine…" else "Speech is captured and transcribed locally. Audio never leaves this phone.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 14.dp).widthIn(max = 420.dp))
         PrimaryAction("OPEN VOICE COMMUNICATION", Icons.AutoMirrored.Filled.Chat, onCommunicate, Modifier.fillMaxWidth().padding(top = 16.dp))
     }
 }
@@ -350,8 +350,6 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     val discoverability = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_CANCELED) vm.reportError("This phone was not made visible. It can still connect to known peers.")
     }
-    val modelPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(vm::installSttModel) }
-    val ttsModelPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { vm.installTtsModel(selectedTtsLanguage, it) } }
     val microphonePermission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         microphoneGranted = granted
         microphoneDenied = !granted
@@ -379,7 +377,6 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
                 pushToTalk = pushToTalk,
                 onPushToTalkChanged = vm::setPushToTalk,
                 onLanguageSelected = vm::selectSttLanguage,
-                onInstallModel = { modelPicker.launch(arrayOf("application/octet-stream", "application/x-binary", "*/*")) },
                 onRequestMicrophone = { microphonePermission.launch(Manifest.permission.RECORD_AUDIO) },
                 onOpenSettings = { context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.fromParts("package", context.packageName, null))) },
                 onStart = vm::startVoice,
@@ -392,7 +389,6 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
                 language = selectedTtsLanguage,
                 installed = selectedTtsLanguage in installedTtsLanguages,
                 speed = ttsSpeed,
-                onInstallModel = { ttsModelPicker.launch(arrayOf("application/zip", "application/octet-stream")) },
                 onSpeedChanged = vm::setTtsSpeed,
                 onStop = vm::stopTts,
             )
@@ -488,7 +484,6 @@ private fun TtsPanel(
     language: TtsLanguage,
     installed: Boolean,
     speed: Float,
-    onInstallModel: () -> Unit,
     onSpeedChanged: (Float) -> Unit,
     onStop: () -> Unit,
 ) {
@@ -499,28 +494,13 @@ private fun TtsPanel(
                 SectionLabel("OFFLINE TEXT TO SPEECH")
                 Text("MMS-TTS • sherpa-onnx $SHERPA_ONNX_VERSION • local PCM", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp))
             }
-            StatusBadge(when {
-                !language.hasOfficialSherpaMmsPackage -> "MODEL UNAVAILABLE"
-                !installed && status.state == TtsState.MODEL_MISSING -> "MODEL NOT INSTALLED"
-                else -> status.state.name.replace('_', ' ')
-            }, when {
-                status.state == TtsState.ERROR || status.state == TtsState.MODEL_LOAD_FAILED -> VokieTheme.colors.alert
-                installed && status.state in setOf(TtsState.READY, TtsState.COMPLETED, TtsState.PLAYING) -> VokieTheme.colors.success
-                else -> VokieTheme.colors.warning
-            }, loading = status.state in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING, TtsState.SYNTHESIZING))
+            StatusBadge(if (installed) "MMS-TTS READY" else "PREPARING OFFLINE TTS", if (installed) VokieTheme.colors.success else VokieTheme.colors.warning, loading = !installed || status.state == TtsState.INITIALIZING)
         }
         Text("Message language selects the voice model. Current language: ${language.nativeName} (${language.iso6393}).", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 12.dp))
         if (status.state in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING)) {
             Text("Model ${status.state.name.lowercase().replace('_', ' ')}...", style = VokieTheme.typography.body, color = VokieTheme.colors.accent, modifier = Modifier.padding(top = 8.dp))
         }
-        if (!language.hasOfficialSherpaMmsPackage) {
-            Text("The official sherpa-onnx catalogue has no pre-converted vits-mms package for this language. Vokie will not invent or silently substitute a model.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
-        } else if (!installed) {
-            Text("TTS MODEL NOT INSTALLED. Import a ZIP containing the unchanged model.onnx and tokens.txt from ${language.modelPackage?.officialArchiveName}.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
-            PrimaryAction("INSTALL LOCAL TTS MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 10.dp), enabled = status.state !in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING, TtsState.SYNTHESIZING))
-        } else {
-            Text("Model installed • ${formatBytes(status.installedModelBytes)}", style = VokieTheme.typography.caption, color = VokieTheme.colors.success, modifier = Modifier.padding(top = 10.dp))
-        }
+        Text(if (installed) "✓ MMS-TTS ready • bundled for all 10 offline languages" else "Preparing verified bundled TTS assets…", style = VokieTheme.typography.caption, color = if (installed) VokieTheme.colors.success else VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
         Text("Speech speed • ${String.format(java.util.Locale.US, "%.2f", pendingSpeed)}x", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 14.dp))
         Slider(value = pendingSpeed, onValueChange = { pendingSpeed = it }, onValueChangeFinished = { onSpeedChanged(pendingSpeed) }, valueRange = MIN_TTS_SPEED..MAX_TTS_SPEED, steps = 2, enabled = status.state !in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING))
         if (status.state in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING)) SecondaryAction(if (status.state == TtsState.PLAYING) "STOP PLAYBACK" else "STOP AFTER SYNTHESIS", Icons.Default.Stop, onStop, Modifier.fillMaxWidth())
@@ -541,7 +521,6 @@ private fun SttPanel(
     pushToTalk: Boolean,
     onPushToTalkChanged: (Boolean) -> Unit,
     onLanguageSelected: (SttLanguage) -> Unit,
-    onInstallModel: () -> Unit,
     onRequestMicrophone: () -> Unit,
     onOpenSettings: () -> Unit,
     onStart: () -> Unit,
@@ -590,8 +569,7 @@ private fun SttPanel(
             Switch(checked = pushToTalk, onCheckedChange = onPushToTalkChanged, enabled = status.state !in setOf(SttState.LISTENING, SttState.PROCESSING))
         }
         if (status.state == SttState.MODEL_MISSING || status.failure?.code == SttErrorCode.MODEL_LOAD_FAILED) {
-            Text("STT MODEL NOT INSTALLED. Select the verified ggml-tiny-q5_1.bin file from local storage. Vokie will not download it.", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 14.dp))
-            PrimaryAction("INSTALL LOCAL STT MODEL", Icons.Default.FolderOpen, onInstallModel, Modifier.fillMaxWidth().padding(top = 12.dp), enabled = status.state !in setOf(SttState.IMPORTING, SttState.VALIDATING, SttState.INITIALIZING))
+            Text("Preparing bundled offline speech recognition…", style = VokieTheme.typography.body, color = VokieTheme.colors.warning, modifier = Modifier.padding(top = 14.dp))
         } else {
             if (status.installedModelBytes > 0) Text("Model installed • ${formatBytes(status.installedModelBytes)}", style = VokieTheme.typography.caption, color = VokieTheme.colors.success, modifier = Modifier.padding(top = 10.dp))
             Surface(

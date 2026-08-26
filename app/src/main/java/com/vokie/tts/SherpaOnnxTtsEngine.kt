@@ -113,13 +113,8 @@ class SherpaOnnxTtsEngine(
             return
         }
         moveTo(TtsState.INITIALIZING, language)
-        val pack = language.modelPackage
-        if (pack == null) {
-            moveTo(TtsState.MODEL_MISSING, language, failure = TtsFailure(TtsErrorCode.UNSUPPORTED_LANGUAGE, "No official sherpa-onnx vits-mms package is available for ${language.nativeName}."))
-            return
-        }
         if (!modelManager.isInstalled(language)) {
-            moveTo(TtsState.MODEL_MISSING, language, failure = TtsFailure(TtsErrorCode.MODEL_MISSING, "TTS MODEL NOT INSTALLED for ${language.nativeName}."))
+            moveTo(TtsState.MODEL_MISSING, language, failure = TtsFailure(TtsErrorCode.MODEL_MISSING, "Bundled TTS assets could not be prepared for ${language.nativeName}."))
             return
         }
         val started = SystemClock.elapsedRealtime()
@@ -141,7 +136,7 @@ class SherpaOnnxTtsEngine(
             val loadTime = SystemClock.elapsedRealtime() - started
             val size = modelManager.installedSizeBytes(language)
             moveTo(TtsState.READY, language, modelLoadTimeMs = loadTime, installedModelBytes = size)
-            VokieLog.tts("Loaded ${pack.officialArchiveName} in ${loadTime}ms")
+            VokieLog.tts("Loaded bundled MMS-TTS ${language.iso6393} in ${loadTime}ms")
         } catch (error: Throwable) {
             tts?.release(); tts = null; activeLanguage = null
             val failure = mapTtsFailure(error, TtsErrorCode.MODEL_LOAD_FAILED, "The ${language.nativeName} TTS model could not be loaded.")

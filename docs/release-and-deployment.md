@@ -45,8 +45,16 @@ Repository/environment configuration:
 - Secret `AWS_DEPLOY_ROLE_ARN`
 - Variables `AWS_REGION`, `VOKIE_BUCKET`, `VOKIE_CLOUDFRONT_DISTRIBUTION_ID`
 - Android signing secrets above
+- Secret `VOKIE_MODELS_ARCHIVE_URL`: short-lived/protected CI-only URL for the verified model ZIP
+- Secret `VOKIE_MODELS_ARCHIVE_SHA256`: SHA-256 of that ZIP
 
 The release job uses GitHub OIDC and has `id-token: write`; no long-lived AWS access key is used.
+
+## Bundled offline model archive
+
+Production builds are self-contained. The protected archive is not a GitHub repository asset and must contain `models/manifest.json`, `stt/ggml-tiny-q5_1.bin`, and `model.onnx` plus `tokens.txt` for each of `eng`, `hin`, `guj`, `mar`, `kan`, `mal`, `tam`, `tel`, `ory`, and `ben`. The manifest lists an exact SHA-256 and byte size for every one of those 21 files.
+
+`scripts/stage-bundled-models.py` rejects an incomplete or mismatched archive before Gradle runs. The release workflow then verifies the final APK contains every model byte-for-byte and stores those entries uncompressed. On first launch Vokie atomically extracts and re-verifies APK assets to private storage; extraction has no network or import path.
 
 ## Release flow
 

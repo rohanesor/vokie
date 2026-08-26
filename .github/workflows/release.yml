@@ -2,7 +2,6 @@ name: Vokie Release
 
 on:
   push:
-    branches: [main]
     tags:
       - 'v*.*.*'
 
@@ -37,12 +36,16 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          MODELS_ARCHIVE_URL: ${{ secrets.VOKIE_MODELS_ARCHIVE_URL }}
+          MODELS_ARCHIVE_SHA256: ${{ secrets.VOKIE_MODELS_ARCHIVE_SHA256 }}
         run: |
           set -euo pipefail
           test -n "$KEYSTORE_B64" || { echo 'ANDROID_KEYSTORE_BASE64 is not configured'; exit 1; }
           test -n "$KEYSTORE_PASSWORD" || { echo 'ANDROID_KEYSTORE_PASSWORD is not configured'; exit 1; }
           test -n "$KEY_ALIAS" || { echo 'ANDROID_KEY_ALIAS is not configured'; exit 1; }
           test -n "$KEY_PASSWORD" || { echo 'ANDROID_KEY_PASSWORD is not configured'; exit 1; }
+          test -n "$MODELS_ARCHIVE_URL" || { echo 'VOKIE_MODELS_ARCHIVE_URL is not configured'; exit 1; }
+          test -n "$MODELS_ARCHIVE_SHA256" || { echo 'VOKIE_MODELS_ARCHIVE_SHA256 is not configured'; exit 1; }
           test -n "$AWS_DEPLOY_ROLE_ARN" || { echo 'AWS_DEPLOY_ROLE_ARN is not configured'; exit 1; }
           test -n "$AWS_REGION" || { echo 'AWS_REGION repository variable is not configured'; exit 1; }
           test -n "$VOKIE_BUCKET" || { echo 'VOKIE_BUCKET repository variable is not configured'; exit 1; }
@@ -80,6 +83,18 @@ jobs:
       - name: Make Gradle wrapper executable
         run: chmod +x ./gradlew
 
+      - name: Stage verified bundled offline models
+        env:
+          MODELS_ARCHIVE_URL: ${{ secrets.VOKIE_MODELS_ARCHIVE_URL }}
+          MODELS_ARCHIVE_SHA256: ${{ secrets.VOKIE_MODELS_ARCHIVE_SHA256 }}
+        run: |
+          set -euo pipefail
+          test -n "$MODELS_ARCHIVE_URL" || { echo 'VOKIE_MODELS_ARCHIVE_URL is not configured'; exit 1; }
+          test -n "$MODELS_ARCHIVE_SHA256" || { echo 'VOKIE_MODELS_ARCHIVE_SHA256 is not configured'; exit 1; }
+          curl --fail --show-error --location --retry 3 "$MODELS_ARCHIVE_URL" -o "$RUNNER_TEMP/vokie-models.zip"
+          echo "$MODELS_ARCHIVE_SHA256  $RUNNER_TEMP/vokie-models.zip" | sha256sum --check --status
+          python3 scripts/stage-bundled-models.py "$RUNNER_TEMP/vokie-models.zip"
+
       - name: Clean
         run: ./gradlew clean --no-daemon
 
@@ -98,6 +113,7 @@ jobs:
           version_code=$(echo "$version" | awk -F. '{print ($1*1000000)+($2*1000)+$3}')
           ./gradlew assembleRelease -PversionName="$version" -PversionCode="$version_code" -PproductionRelease=true --no-daemon
           test -f app/build/outputs/apk/release/app-release.apk
+          python3 scripts/verify-bundled-model-apk.py app/build/outputs/apk/release/app-release.apk
           mkdir -p release
           cp app/build/outputs/apk/release/app-release.apk "release/Vokie-v${version}.apk"
           sha256sum "release/Vokie-v${version}.apk" > "release/Vokie-v${version}.apk.sha256"

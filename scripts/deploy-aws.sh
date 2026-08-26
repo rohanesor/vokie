@@ -63,6 +63,9 @@ with open(path, 'w', encoding='utf-8') as f:
         'size': size,
         'date': __import__('datetime').date.today().isoformat(),
         'minAndroid': 'Android 7.0+',
+        'languages': ['English', 'Hindi', 'Gujarati', 'Marathi', 'Kannada', 'Malayalam', 'Tamil', 'Telugu', 'Odia', 'Bengali'],
+        'offlineModelsBundled': True,
+        'internetRequiredAfterInstall': False,
         'downloadUrl': f'downloads/latest/Vokie-latest.apk'
     }
     if not data['versionCode']:

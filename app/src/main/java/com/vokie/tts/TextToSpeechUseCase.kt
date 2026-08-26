@@ -1,6 +1,5 @@
 package com.vokie.tts
 
-import android.net.Uri
 import com.vokie.domain.model.Message
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -17,10 +16,6 @@ class TextToSpeechUseCase(
     val speed: Flow<Float> = preferences.speed
 
     fun start() = queue.start()
-
-    suspend fun installModel(language: TtsLanguage, zipUri: Uri) {
-        engine.install(language) { modelManager.installZip(language, zipUri) }
-    }
 
     suspend fun setSpeed(speed: Float) = preferences.setSpeed(speed)
 

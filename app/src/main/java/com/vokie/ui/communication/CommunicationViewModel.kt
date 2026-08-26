@@ -1,7 +1,6 @@
 package com.vokie.ui.communication
 
 import android.app.Application
-import android.net.Uri
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.vokie.VokieApplication
@@ -56,10 +55,8 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
 
     fun selectSttLanguage(language: SttLanguage) = action { speechToText.selectLanguage(language) }
     fun initializeStt() = action { speechToText.initialize() }
-    fun installSttModel(uri: Uri) = action { speechToText.installModel(uri) }
     fun startVoice() = action { speechToText.start(selectedSttLanguage.value) }
     fun stopVoice() = action { speechToText.stop() }
-    fun installTtsModel(language: TtsLanguage, uri: Uri) = action { textToSpeech.installModel(language, uri) }
     fun setTtsSpeed(speed: Float) = action { textToSpeech.setSpeed(speed) }
     fun playMessage(message: Message) = action { textToSpeech.play(message) }
     fun stopMessage(messageId: String) = action { textToSpeech.stop(messageId) }

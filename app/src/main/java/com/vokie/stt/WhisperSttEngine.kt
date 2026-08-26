@@ -53,7 +53,7 @@ class WhisperSttEngine(
         }
         moveTo(SttState.INITIALIZING)
         if (!modelStore.isInstalled()) {
-            moveTo(SttState.MODEL_MISSING, failure = SttFailure(SttErrorCode.MODEL_MISSING, "STT MODEL NOT INSTALLED"))
+            moveTo(SttState.MODEL_MISSING, failure = SttFailure(SttErrorCode.MODEL_MISSING, "Bundled STT assets could not be prepared."))
             return@withLock
         }
         val modelFile = model.localFile(context)
