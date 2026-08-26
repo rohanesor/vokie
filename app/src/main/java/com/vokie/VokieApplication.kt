@@ -7,6 +7,7 @@ import com.vokie.data.local.*
 import com.vokie.domain.model.TransportType
 import com.vokie.map.MapPackManager
 import com.vokie.models.BundledModelStore
+import com.vokie.models.ModelDownloadManager
 import com.vokie.map.MapPreferences
 import com.vokie.map.OfflineMapUseCase
 import com.vokie.stt.SpeechToTextUseCase
@@ -32,6 +33,7 @@ class VokieApplication : Application() {
     lateinit var sttLanguagePreferences: SttLanguagePreferences; private set
     lateinit var speechToText: SpeechToTextUseCase; private set
     lateinit var ttsEngine: SherpaOnnxTtsEngine; private set
+    lateinit var modelDownloads: ModelDownloadManager; private set
     lateinit var textToSpeech: TextToSpeechUseCase; private set
     lateinit var offlineMap: OfflineMapUseCase; private set
     lateinit var communicationPreferences: CommunicationPreferences; private set
@@ -52,6 +54,7 @@ class VokieApplication : Application() {
         speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)
         val bundledModels = BundledModelStore(applicationContext)
         val ttsModels = TtsModelManager(applicationContext)
+        modelDownloads = ModelDownloadManager(applicationContext, bundledModels)
         val ttsPreferences = TtsPreferences(applicationContext)
         val ttsSpeed = ttsPreferences.speed.stateIn(applicationScope, SharingStarted.Eagerly, DEFAULT_TTS_SPEED)
         ttsEngine = SherpaOnnxTtsEngine(ttsModels, VokieAudioPlayer(applicationContext))

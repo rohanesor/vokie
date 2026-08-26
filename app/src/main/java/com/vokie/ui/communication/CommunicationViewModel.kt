@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.vokie.VokieApplication
 import com.vokie.communication.CommunicationPreferences
 import com.vokie.domain.model.*
+import com.vokie.models.DownloadState
 import com.vokie.stt.SttLanguage
 import com.vokie.stt.SttStatus
 import com.vokie.tts.*
@@ -35,6 +36,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     val messageTtsStates: StateFlow<Map<String, MessageTtsState>> = textToSpeech.messageStates
     val installedTtsLanguages: StateFlow<Set<TtsLanguage>> = textToSpeech.installedLanguages
     val ttsSpeed: StateFlow<Float> = textToSpeech.speed.stateIn(viewModelScope, SharingStarted.Eagerly, DEFAULT_TTS_SPEED)
+    val modelDownloadState: StateFlow<DownloadState> = app.modelDownloads.state
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -58,6 +60,10 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun startVoice() = action { speechToText.start(selectedSttLanguage.value) }
     fun stopVoice() = action { speechToText.stop() }
     fun setTtsSpeed(speed: Float) = action { textToSpeech.setSpeed(speed) }
+    fun downloadTtsLanguage(language: TtsLanguage) = action {
+        app.modelDownloads.download(language)
+        textToSpeech.refreshDownloadedLanguage(language)
+    }
     fun playMessage(message: Message) = action { textToSpeech.play(message) }
     fun stopMessage(messageId: String) = action { textToSpeech.stop(messageId) }
     fun stopTts() = action { textToSpeech.stop() }

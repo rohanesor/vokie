@@ -3,6 +3,7 @@
 import hashlib, json, sys, zipfile
 LANGUAGES = ('eng','hin','guj','mar','kan','mal','tam','tel','ory','ben')
 REQUIRED = {'stt/ggml-tiny-q5_1.bin'} | {f'tts/{l}/{n}' for l in LANGUAGES for n in ('model.onnx','tokens.txt')}
+BUNDLED = {'stt/ggml-tiny-q5_1.bin', 'tts/eng/model.onnx', 'tts/eng/tokens.txt'}
 def fail(m): raise SystemExit(f'APK model validation failed: {m}')
 def digest(data): return hashlib.sha256(data).hexdigest()
 if len(sys.argv) != 2: fail('usage: verify-bundled-model-apk.py APK')
@@ -12,7 +13,7 @@ with zipfile.ZipFile(sys.argv[1]) as apk:
     files = manifest.get('files', {})
     if set(files) != REQUIRED: fail('manifest does not cover every required model')
     total = 0
-    for relative in sorted(files):
+    for relative in sorted(BUNDLED):
         expected = files[relative]
         name = 'assets/models/' + relative
         try: data = apk.read(name)
@@ -21,7 +22,7 @@ with zipfile.ZipFile(sys.argv[1]) as apk:
         if apk.getinfo(name).compress_type != zipfile.ZIP_STORED: fail(f'{name} must be stored uncompressed')
         total += len(data)
         print(f'MODEL {relative}: {len(data)} bytes')
-print(f'Validated {len(REQUIRED)} bundled offline model files; total model payload: {total} bytes.')
+print(f'Validated {len(BUNDLED)} base model files; full manifest covers {len(REQUIRED)} verified language-pack files; base payload: {total} bytes.')
 apk_path = __import__("pathlib").Path(sys.argv[1])
 hash_file = hashlib.sha256()
 with apk_path.open('rb') as stream:

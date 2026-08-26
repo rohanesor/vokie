@@ -16,6 +16,7 @@ class TextToSpeechUseCase(
     val speed: Flow<Float> = preferences.speed
 
     fun start() = queue.start()
+    fun refreshDownloadedLanguage(language: TtsLanguage) = modelManager.markDownloaded(language)
 
     suspend fun setSpeed(speed: Float) = preferences.setSpeed(speed)
 

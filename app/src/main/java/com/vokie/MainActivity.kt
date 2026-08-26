@@ -55,6 +55,7 @@ import com.vokie.domain.model.*
 import com.vokie.map.*
 import com.vokie.stt.*
 import com.vokie.tts.*
+import com.vokie.models.DownloadState
 import com.vokie.ui.communication.CommunicationViewModel
 import com.vokie.ui.map.MapViewModel
 import com.vokie.ui.theme.*
@@ -336,6 +337,7 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
     val ttsStates by vm.messageTtsStates.collectAsState()
     val installedTtsLanguages by vm.installedTtsLanguages.collectAsState()
     val ttsSpeed by vm.ttsSpeed.collectAsState()
+    val modelDownloadState by vm.modelDownloadState.collectAsState()
     val selectedTtsLanguage = TtsLanguage.fromMessageCode(selectedLanguage.messageLanguage.code) ?: TtsLanguage.ENGLISH
     val pushToTalk by vm.pushToTalkEnabled.collectAsState()
     val bt = bluetoothUi(state)
@@ -389,6 +391,8 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
                 language = selectedTtsLanguage,
                 installed = selectedTtsLanguage in installedTtsLanguages,
                 speed = ttsSpeed,
+                downloadState = modelDownloadState,
+                onDownload = vm::downloadTtsLanguage,
                 onSpeedChanged = vm::setTtsSpeed,
                 onStop = vm::stopTts,
             )
@@ -484,10 +488,13 @@ private fun TtsPanel(
     language: TtsLanguage,
     installed: Boolean,
     speed: Float,
+    downloadState: DownloadState,
+    onDownload: (TtsLanguage) -> Unit,
     onSpeedChanged: (Float) -> Unit,
     onStop: () -> Unit,
 ) {
     var pendingSpeed by remember(speed) { mutableFloatStateOf(speed) }
+    var confirmDownload by remember { mutableStateOf(false) }
     VokiePanel(Modifier.padding(horizontal = 20.dp, vertical = 12.dp).fillMaxWidth()) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -500,7 +507,16 @@ private fun TtsPanel(
         if (status.state in setOf(TtsState.IMPORTING, TtsState.VALIDATING, TtsState.INITIALIZING)) {
             Text("Model ${status.state.name.lowercase().replace('_', ' ')}...", style = VokieTheme.typography.body, color = VokieTheme.colors.accent, modifier = Modifier.padding(top = 8.dp))
         }
-        Text(if (installed) "✓ MMS-TTS ready • bundled for all 10 offline languages" else "Preparing verified bundled TTS assets…", style = VokieTheme.typography.caption, color = if (installed) VokieTheme.colors.success else VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
+        when (downloadState) {
+            is DownloadState.Downloading -> if (downloadState.language == language) {
+                Text("Downloading ${language.nativeName} offline voice • ${downloadState.percent}%", style = VokieTheme.typography.caption, color = VokieTheme.colors.accent, modifier = Modifier.padding(top = 10.dp))
+                LinearProgressIndicator(progress = downloadState.percent / 100f, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
+            }
+            is DownloadState.Error -> if (downloadState.language == language) Text(downloadState.message, style = VokieTheme.typography.caption, color = VokieTheme.colors.alert, modifier = Modifier.padding(top = 10.dp))
+            else -> Unit
+        }
+        Text(if (installed) "✓ MMS-TTS ready • available offline" else "This voice is not installed. Download once on Wi-Fi for offline use.", style = VokieTheme.typography.caption, color = if (installed) VokieTheme.colors.success else VokieTheme.colors.warning, modifier = Modifier.padding(top = 10.dp))
+        if (!installed && language != TtsLanguage.ENGLISH) SecondaryAction("DOWNLOAD ${language.nativeName.uppercase()} VOICE", Icons.Default.Download, { confirmDownload = true }, Modifier.fillMaxWidth().padding(top = 10.dp), enabled = downloadState !is DownloadState.Downloading)
         Text("Speech speed • ${String.format(java.util.Locale.US, "%.2f", pendingSpeed)}x", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 14.dp))
         Slider(value = pendingSpeed, onValueChange = { pendingSpeed = it }, onValueChangeFinished = { onSpeedChanged(pendingSpeed) }, valueRange = MIN_TTS_SPEED..MAX_TTS_SPEED, steps = 2, enabled = status.state !in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING))
         if (status.state in setOf(TtsState.SYNTHESIZING, TtsState.PLAYING)) SecondaryAction(if (status.state == TtsState.PLAYING) "STOP PLAYBACK" else "STOP AFTER SYNTHESIS", Icons.Default.Stop, onStop, Modifier.fillMaxWidth())
@@ -510,6 +526,13 @@ private fun TtsPanel(
         }
         status.modelLoadTimeMs?.let { Text("Model load ${it} ms", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 6.dp)) }
     }
+    if (confirmDownload) AlertDialog(
+        onDismissRequest = { confirmDownload = false },
+        title = { Text("Download ${language.nativeName} voice?") },
+        text = { Text("About 114 MB. The verified pack downloads on Wi-Fi once, then works offline.") },
+        confirmButton = { TextButton(onClick = { confirmDownload = false; onDownload(language) }) { Text("DOWNLOAD") } },
+        dismissButton = { TextButton(onClick = { confirmDownload = false }) { Text("CANCEL") } },
+    )
 }
 
 @Composable

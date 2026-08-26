@@ -18,7 +18,7 @@ class BundledModelStore(private val context: Context) {
         val temporary = File(context.filesDir, ".models.extracting")
         temporary.deleteRecursively(); temporary.mkdirs()
         try {
-            manifest.files.forEach { (relative, spec) ->
+            manifest.files.filterKeys { it in BUNDLED_FILES }.forEach { (relative, spec) ->
                 val destination = File(temporary, relative).also { it.parentFile!!.mkdirs() }
                 context.assets.open("models/$relative").use { input ->
                     FileOutputStream(destination).use { output -> input.copyTo(output, BUFFER) }
@@ -46,7 +46,8 @@ class BundledModelStore(private val context: Context) {
         }
         return ModelManifest(raw, files)
     }
-    private fun isValid(manifest: ModelManifest) = manifest.files.all { (relative, spec) ->
+    private fun isValid(manifest: ModelManifest) = BUNDLED_FILES.all { relative ->
+        val spec = manifest.files[relative] ?: return@all false
         val file = File(root, relative)
         file.isFile && file.length() == spec.sizeBytes && file.sha256() == spec.sha256
     }
@@ -57,5 +58,8 @@ class BundledModelStore(private val context: Context) {
     }
     data class ModelFile(val sizeBytes: Long, val sha256: String)
     data class ModelManifest(val raw: String, val files: Map<String, ModelFile>)
-    private companion object { const val BUFFER = 64 * 1024 }
+    private companion object {
+        const val BUFFER = 64 * 1024
+        val BUNDLED_FILES = setOf("stt/ggml-tiny-q5_1.bin", "tts/eng/model.onnx", "tts/eng/tokens.txt")
+    }
 }

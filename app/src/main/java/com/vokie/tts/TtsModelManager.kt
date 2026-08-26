@@ -25,6 +25,7 @@ class TtsModelManager(context: Context) {
     fun missingLanguages(): Set<TtsLanguage> = TtsLanguage.entries.filterNot(::isInstalled).toSet()
     fun availableOfficialPackages(): Set<TtsLanguage> = TtsLanguage.entries.toSet()
     fun refresh() { _installedLanguages.value = scanInstalled() }
+    fun markDownloaded(language: TtsLanguage) { if (isInstalled(language)) _installedLanguages.value = scanInstalled() }
     fun releaseUnusedModel(activeLanguage: TtsLanguage?) { require(activeLanguage == null || activeLanguage in TtsLanguage.entries) }
     private fun scanInstalled() = TtsLanguage.entries.filter(::isInstalled).toSet()
 }

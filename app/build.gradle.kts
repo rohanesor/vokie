@@ -5,6 +5,7 @@ plugins {
 }
 
 val productionRelease = providers.gradleProperty("productionRelease").orElse("false").get().toBoolean()
+val modelCdnBaseUrl = providers.gradleProperty("modelCdnBaseUrl").orElse("https://d2sv8yw5k4h6gl.cloudfront.net").get().trimEnd('/')
 
 android {
     namespace = "com.vokie"
@@ -22,6 +23,7 @@ android {
         targetSdk = 34
         versionCode = configuredVersionCode.get().toIntOrNull() ?: error("versionCode must be an integer")
         versionName = configuredVersionName.get()
+        buildConfigField("String", "MODEL_CDN_BASE_URL", "\"$modelCdnBaseUrl\"")
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables { useSupportLibrary = true }

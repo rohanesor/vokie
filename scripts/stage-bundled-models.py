@@ -11,6 +11,9 @@ from pathlib import Path
 
 LANGUAGES = ('eng','hin','guj','mar','kan','mal','tam','tel','ory','ben')
 REQUIRED = {'stt/ggml-tiny-q5_1.bin'} | {f'tts/{l}/{n}' for l in LANGUAGES for n in ('model.onnx','tokens.txt')}
+# Base APK: Whisper plus the default English voice. The full manifest remains bundled
+# so downloaded packs are verified against exactly the release-approved checksums.
+BUNDLED = {'stt/ggml-tiny-q5_1.bin', 'tts/eng/model.onnx', 'tts/eng/tokens.txt'}
 # Immutable project pins; the protected manifest supplies the independently verified remaining MMS files.
 PINNED_SHA256 = {
     'stt/ggml-tiny-q5_1.bin': '818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7',
@@ -54,5 +57,10 @@ with tempfile.TemporaryDirectory(prefix='vokie-models-') as tmp:
         if relative in PINNED_SHA256 and expected['sha256'].lower() != PINNED_SHA256[relative]: fail(f'manifest pin mismatch for {relative}')
         if path.stat().st_size != expected['sizeBytes'] or sha(path) != expected['sha256'].lower(): fail(f'checksum or size mismatch for {relative}')
     if DEST.exists(): shutil.rmtree(DEST)
-    shutil.copytree(source, DEST)
-print(f'Staged {len(REQUIRED)} verified offline model files ({sum((DEST/p).stat().st_size for p in REQUIRED)} bytes).')
+    DEST.mkdir(parents=True)
+    shutil.copy2(manifest_file, DEST / 'manifest.json')
+    for relative in BUNDLED:
+        destination = DEST / relative
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source / relative, destination)
+print(f'Staged {len(BUNDLED)} base model files ({sum((DEST/p).stat().st_size for p in BUNDLED)} bytes); manifest covers {len(REQUIRED)} downloadable/verified files.)')

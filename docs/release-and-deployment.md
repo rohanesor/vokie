@@ -63,7 +63,9 @@ aws s3 cp vokie-models-v1.0.0.tar.zst s3://PRIVATE_BUCKET/models/v1.0.0/
 aws s3 cp vokie-models-v1.0.0.sha256 s3://PRIVATE_BUCKET/models/v1.0.0/
 ```
 
-`scripts/stage-bundled-models.py` rejects an incomplete or mismatched archive before Gradle runs. The OIDC role reads it only in the ephemeral release runner; the final APK verifier prints every bundled file and its size, and fails closed. On first launch Vokie atomically extracts and re-verifies APK assets to private storage; extraction has no network or import path.
+`scripts/stage-bundled-models.py` rejects an incomplete or mismatched archive before Gradle runs, then stages only Whisper and English TTS into the base APK while retaining the full manifest. The OIDC role reads the archive only in the ephemeral release runner. On first launch Vokie atomically extracts and re-verifies base assets to private storage.
+
+The other nine verified TTS packs are user-confirmed one-time Wi-Fi downloads. Publish their individually checksummed files from an extracted verified archive with `scripts/publish-language-packs.sh PRIVATE_MODELS_BUCKET extracted/models`. The app downloads only from the configured `BuildConfig.MODEL_CDN_BASE_URL`, validates size and SHA-256 against its bundled manifest, then atomically installs the pack into private storage. Speech inference never requires a network connection.
 
 ## Release flow
 
