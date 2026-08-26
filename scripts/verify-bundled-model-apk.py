@@ -11,10 +11,20 @@ with zipfile.ZipFile(sys.argv[1]) as apk:
     except KeyError: fail('assets/models/manifest.json is missing')
     files = manifest.get('files', {})
     if set(files) != REQUIRED: fail('manifest does not cover every required model')
-    for relative, expected in files.items():
+    total = 0
+    for relative in sorted(files):
+        expected = files[relative]
         name = 'assets/models/' + relative
         try: data = apk.read(name)
         except KeyError: fail(f'{name} is missing')
         if len(data) != expected['sizeBytes'] or digest(data) != expected['sha256'].lower(): fail(f'{name} does not match manifest')
         if apk.getinfo(name).compress_type != zipfile.ZIP_STORED: fail(f'{name} must be stored uncompressed')
-print(f'Validated {len(REQUIRED)} bundled offline model files in {sys.argv[1]}.')
+        total += len(data)
+        print(f'MODEL {relative}: {len(data)} bytes')
+print(f'Validated {len(REQUIRED)} bundled offline model files; total model payload: {total} bytes.')
+apk_path = __import__("pathlib").Path(sys.argv[1])
+hash_file = hashlib.sha256()
+with apk_path.open('rb') as stream:
+    for block in iter(lambda: stream.read(1024 * 1024), b''): hash_file.update(block)
+print(f'APK size: {apk_path.stat().st_size} bytes')
+print(f'APK SHA-256: {hash_file.hexdigest()}')

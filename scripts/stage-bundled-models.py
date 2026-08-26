@@ -6,7 +6,7 @@ The archive is never committed. It must contain models/manifest.json and exactly
 manifest.json maps every relative file path to its SHA-256, byte size, and is the
 only source of TTS model metadata accepted by the production build.
 """
-import hashlib, json, os, shutil, sys, tempfile, zipfile
+import hashlib, json, shutil, sys, tempfile, zipfile
 from pathlib import Path
 
 LANGUAGES = ('eng','hin','guj','mar','kan','mal','tam','tel','ory','ben')
@@ -29,16 +29,19 @@ def sha(path):
         for block in iter(lambda: f.read(1024 * 1024), b''): h.update(block)
     return h.hexdigest()
 
-if len(sys.argv) != 2: fail('usage: stage-bundled-models.py VERIFIED_MODELS.zip')
-archive = Path(sys.argv[1])
-if not archive.is_file(): fail(f'archive not found: {archive}')
+if len(sys.argv) != 2: fail('usage: stage-bundled-models.py EXTRACTED_ARCHIVE_DIRECTORY_OR_ZIP')
+input_path = Path(sys.argv[1])
+if not input_path.exists(): fail(f'archive input not found: {input_path}')
 with tempfile.TemporaryDirectory(prefix='vokie-models-') as tmp:
     tmp = Path(tmp)
-    with zipfile.ZipFile(archive) as z:
-        names = set(z.namelist())
-        if any(n.startswith('/') or '..' in Path(n).parts for n in names): fail('unsafe ZIP path')
-        z.extractall(tmp)
-    source = tmp / 'models'
+    if input_path.is_dir():
+        source = input_path / 'models'
+    else:
+        with zipfile.ZipFile(input_path) as z:
+            names = set(z.namelist())
+            if any(n.startswith('/') or '..' in Path(n).parts for n in names): fail('unsafe ZIP path')
+            z.extractall(tmp)
+        source = tmp / 'models'
     manifest_file = source / 'manifest.json'
     if not manifest_file.is_file(): fail('models/manifest.json is missing')
     manifest = json.loads(manifest_file.read_text(encoding='utf-8'))
