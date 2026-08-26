@@ -73,7 +73,6 @@ fun validateTtsSpeed(speed: Float): Float {
 interface TtsEngine {
     val status: StateFlow<TtsStatus>
     suspend fun initialize(language: TtsLanguage)
-    suspend fun install(language: TtsLanguage, installModel: suspend () -> Unit)
     suspend fun synthesize(text: String, language: TtsLanguage, speed: Float = DEFAULT_TTS_SPEED): Pair<AudioBuffer, TtsResult>
     suspend fun play(audio: AudioBuffer, emergency: Boolean = false)
     suspend fun stop()
