@@ -19,6 +19,7 @@ class WhisperNative {
     init { System.loadLibrary("vokie_whisper") }
     external fun nativeInit(modelPath: String): Long
     external fun nativeTranscribe(context: Long, samples: FloatArray, language: String, threads: Int): String
+    external fun nativeAbort()
     external fun nativeFree(context: Long)
 }
 
@@ -36,6 +37,9 @@ class WhisperSttEngine(
     private val inferenceMutex = Mutex()
     private val initializationMutex = Mutex()
     private val processing = AtomicBoolean(false)
+    // Set synchronously by VAD/manual stop before inference is dispatched.
+    // This closes the VAD-finalization versus stop() race.
+    private val finalizationPending = AtomicBoolean(false)
     private val _status = MutableStateFlow(SttStatus(SttState.UNINITIALIZED))
     override val status: StateFlow<SttStatus> = _status.asStateFlow()
     private var nativeContext = 0L
@@ -84,11 +88,16 @@ class WhisperSttEngine(
         if (stateMachine.state !in setOf(SttState.READY, SttState.RESULT, SttState.ERROR)) return
         activeLanguage = language
         processing.set(false)
+        finalizationPending.set(false)
         moveTo(SttState.LISTENING, vadState = VadState.WAITING_FOR_SPEECH)
         try {
             recorder.start(
                 onVadState = { vad -> _status.value = _status.value.copy(vadState = vad) },
-                onFinalized = { audio -> scope.launch { processCaptured(audio, activeLanguage) } },
+                onFinalized = { audio ->
+                    if (finalizationPending.compareAndSet(false, true)) {
+                        scope.launch { processCaptured(audio, activeLanguage) }
+                    }
+                },
                 onFailure = { failure -> scope.launch { fail(failure) } },
             )
             VokieLog.stt("Listening started: ${language.whisperCode}")
@@ -98,9 +107,17 @@ class WhisperSttEngine(
     }
 
     override suspend fun stop() {
+        // VAD may have finalized on another thread immediately before button release.
+        if (finalizationPending.get() || processing.get()) return
         val audio = recorder.stop()
-        if (audio != null) processCaptured(audio, activeLanguage)
-        else if (stateMachine.state == SttState.LISTENING && !processing.get()) {
+        if (audio != null) {
+            if (finalizationPending.compareAndSet(false, true)) processCaptured(audio, activeLanguage)
+            return
+        }
+        if (stateMachine.state == SttState.LISTENING) {
+            // Let an already-dispatched VAD callback publish its pending marker.
+            kotlinx.coroutines.yield()
+            if (finalizationPending.get() || processing.get()) return
             fail(SttFailure(SttErrorCode.NO_SPEECH, "No speech was detected. Hold the button and speak, then retry."))
         }
     }
@@ -113,12 +130,29 @@ class WhisperSttEngine(
         if (handle == 0L) throw SttException(SttErrorCode.STT_INITIALIZATION_FAILED, "STT is not initialized")
         return inferenceMutex.withLock {
             val started = SystemClock.elapsedRealtime()
-            val text = withContext(Dispatchers.Default) {
-                native.nativeTranscribe(handle, audio, language.whisperCode, Runtime.getRuntime().availableProcessors().coerceIn(1, 4)).trim()
+            val timedOut = AtomicBoolean(false)
+            val watchdog = scope.launch(Dispatchers.Default) {
+                kotlinx.coroutines.delay(TRANSCRIPTION_TIMEOUT_MS)
+                timedOut.set(true)
+                VokieLog.stt("Transcription timeout — requesting cooperative native abort")
+                native.nativeAbort()
             }
-            val processingTime = SystemClock.elapsedRealtime() - started
-            if (text.isBlank()) throw SttException(SttErrorCode.STT_INFERENCE_FAILED, "Speech was detected, but no text was recognized.")
-            SttResult(text, language, confidence = null, processingTimeMs = processingTime, audioDurationMs = audioDurationMs, timestamp = System.currentTimeMillis())
+            try {
+                val text = withContext(Dispatchers.Default) {
+                    native.nativeTranscribe(handle, audio, language.whisperCode, Runtime.getRuntime().availableProcessors().coerceIn(1, 4)).trim()
+                }
+                val processingTime = SystemClock.elapsedRealtime() - started
+                if (text.isBlank()) throw SttException(SttErrorCode.NO_SPEECH, "No speech was recognized. Try speaking more clearly.")
+                SttResult(text, language, confidence = null, processingTimeMs = processingTime, audioDurationMs = audioDurationMs, timestamp = System.currentTimeMillis())
+            } catch (error: Throwable) {
+                if (error is kotlinx.coroutines.CancellationException && !timedOut.get()) throw error
+                if (timedOut.get()) throw SttException(SttErrorCode.STT_INFERENCE_FAILED, "Transcription timed out after 60 seconds.", error)
+                throw error
+            } finally {
+                watchdog.cancel()
+                // Avoid a canceled watchdog aborting the next mutex-protected inference.
+                watchdog.join()
+            }
         }
     }
 
@@ -126,6 +160,7 @@ class WhisperSttEngine(
         recorder.release()
         releaseContext()
         processing.set(false)
+        finalizationPending.set(false)
         if (stateMachine.state != SttState.UNINITIALIZED) moveTo(SttState.UNINITIALIZED)
     }
 
@@ -137,9 +172,11 @@ class WhisperSttEngine(
             moveTo(SttState.RESULT, vadState = VadState.TEXT_READY, result = result)
             VokieLog.stt("Result ready: audio=${result.audioDurationMs}ms processing=${result.processingTimeMs}ms rtf=${result.realTimeFactor}")
         } catch (error: Throwable) {
+            if (error is kotlinx.coroutines.CancellationException) throw error
             fail(mapSttFailure(error, SttErrorCode.STT_INFERENCE_FAILED, "Local speech recognition failed."))
         } finally {
             processing.set(false)
+            finalizationPending.set(false)
         }
     }
 
@@ -159,6 +196,10 @@ class WhisperSttEngine(
         if (stateMachine.state != SttState.ERROR) moveTo(SttState.ERROR, failure = failure)
         else _status.value = _status.value.copy(failure = failure)
         VokieLog.stt("${failure.code}: ${failure.userMessage}")
+    }
+
+    private companion object {
+        const val TRANSCRIPTION_TIMEOUT_MS = 60_000L
     }
 
     private fun releaseContext() {

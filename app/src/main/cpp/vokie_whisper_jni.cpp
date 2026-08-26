@@ -1,12 +1,19 @@
 #include <jni.h>
 #include <android/log.h>
 #include <algorithm>
+#include <atomic>
 #include <string>
 #include <thread>
 #include "whisper.h"
 
 namespace {
 constexpr const char * TAG = "VOKIE][STT";
+// The app owns one inference context, so one process-local abort flag is sufficient.
+std::atomic<bool> g_abort_requested{false};
+
+bool whisper_abort_callback(void *) {
+    return g_abort_requested.load(std::memory_order_relaxed);
+}
 
 void throw_java(JNIEnv * env, const char * type, const char * message) {
     jclass clazz = env->FindClass(type);
@@ -77,6 +84,9 @@ Java_com_vokie_stt_WhisperNative_nativeTranscribe(
     params.print_special = false;
     params.suppress_blank = true;
     params.suppress_nst = true;
+    g_abort_requested.store(false, std::memory_order_relaxed);
+    params.abort_callback = whisper_abort_callback;
+    params.abort_callback_user_data = nullptr;
     const unsigned int available = std::max(1u, std::thread::hardware_concurrency());
     params.n_threads = std::max(1, std::min(static_cast<int>(available), static_cast<int>(requested_threads)));
 
@@ -97,6 +107,11 @@ Java_com_vokie_stt_WhisperNative_nativeTranscribe(
         if (segment != nullptr) text.append(segment);
     }
     return env->NewStringUTF(text.c_str());
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_vokie_stt_WhisperNative_nativeAbort(JNIEnv *, jobject) {
+    g_abort_requested.store(true, std::memory_order_relaxed);
 }
 
 extern "C" JNIEXPORT void JNICALL
