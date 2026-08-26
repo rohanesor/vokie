@@ -21,6 +21,7 @@ def main():
     root=Path(args.models_root); entries=[]; model_hashes=defaultdict(list)
     for path in sorted(root.glob('tts/*/model.onnx')):
         language=path.parent.name; model=onnx.load_model(path, load_external_data=False)
+        onnx.checker.check_model(model)
         types=Counter(DTYPE.get(i.data_type, str(i.data_type)) for i in model.graph.initializer)
         raw_hashes=Counter(hashlib.sha256(i.raw_data).hexdigest() for i in model.graph.initializer if i.raw_data)
         raw_bytes=sum(len(i.raw_data) for i in model.graph.initializer)
@@ -35,6 +36,7 @@ def main():
             'duplicateInitializerPayloads':sum(n-1 for n in raw_hashes.values() if n>1),
             'duplicateLanguageModels':[],
             'trainingArtifactsPackaged': False,
+            'onnxCheckerValid': True,
         })
     for entry in entries: entry['duplicateLanguageModels']=[x for x in model_hashes[entry['sha256']] if x != entry['language']]
     payload={'schemaVersion':1, 'models':entries, 'summary':{'modelCount':len(entries), 'totalTtsBytes':sum(x['sizeBytes'] for x in entries)}}

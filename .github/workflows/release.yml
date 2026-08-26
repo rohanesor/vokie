@@ -106,6 +106,15 @@ jobs:
           tar --zstd -xf "$archive" -C "$RUNNER_TEMP/vokie-models"
           python3 scripts/stage-bundled-models.py "$RUNNER_TEMP/vokie-models"
 
+      - name: Audit staged ONNX models
+        run: |
+          set -euo pipefail
+          python3 -m venv "$RUNNER_TEMP/vokie-onnx-audit"
+          "$RUNNER_TEMP/vokie-onnx-audit/bin/pip" install --disable-pip-version-check onnx
+          mkdir -p release
+          "$RUNNER_TEMP/vokie-onnx-audit/bin/python" scripts/audit-onnx-models.py app/src/main/assets/models --output release/models-audit.json
+          test "$(python3 -c 'import json; print(len(json.load(open("release/models-audit.json"))["models"]))')" = 10
+
       - name: Clean
         run: ./gradlew clean --no-daemon
 

@@ -73,7 +73,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "eng",
@@ -147,7 +148,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "guj",
@@ -221,7 +223,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "hin",
@@ -295,7 +298,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "kan",
@@ -369,7 +373,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "mal",
@@ -443,7 +448,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "mar",
@@ -517,7 +523,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "ory",
@@ -591,7 +598,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "tam",
@@ -665,7 +673,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     },
     {
       "language": "tel",
@@ -739,7 +748,8 @@
       },
       "duplicateInitializerPayloads": 0,
       "duplicateLanguageModels": [],
-      "trainingArtifactsPackaged": false
+      "trainingArtifactsPackaged": false,
+      "onnxCheckerValid": true
     }
   ],
   "summary": {
