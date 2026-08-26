@@ -1,7 +1,6 @@
 package com.vokie.stt
 
 import android.content.Context
-import android.net.Uri
 import android.os.SystemClock
 import com.vokie.communication.VokieLog
 import kotlinx.coroutines.CoroutineScope
@@ -53,7 +52,7 @@ class WhisperSttEngine(
         }
         moveTo(SttState.INITIALIZING)
         if (!modelStore.isInstalled()) {
-            moveTo(SttState.MODEL_MISSING, failure = SttFailure(SttErrorCode.MODEL_MISSING, "STT MODEL NOT INSTALLED"))
+            moveTo(SttState.MODEL_MISSING, failure = SttFailure(SttErrorCode.MODEL_MISSING, "Bundled STT assets could not be prepared."))
             return@withLock
         }
         val modelFile = model.localFile(context)
@@ -68,26 +67,6 @@ class WhisperSttEngine(
             VokieLog.stt("Model loaded in ${loadTime}ms: ${model.id}")
         } catch (error: Throwable) {
             fail(mapSttFailure(error, SttErrorCode.MODEL_LOAD_FAILED, "The local STT model could not be loaded."))
-        }
-    }
-
-    suspend fun installModel(uri: Uri) = initializationMutex.withLock {
-        releaseContext()
-        moveTo(SttState.IMPORTING, failure = null)
-        try {
-            moveTo(SttState.VALIDATING)
-            val installed = modelStore.install(uri)
-            val size = installed.length()
-            moveTo(SttState.INITIALIZING, installedModelBytes = size)
-            val started = SystemClock.elapsedRealtime()
-            val loaded = withContext(Dispatchers.IO) { native.nativeInit(installed.absolutePath) }
-            check(loaded != 0L)
-            nativeContext = loaded
-            val loadTime = SystemClock.elapsedRealtime() - started
-            moveTo(SttState.READY, modelLoadTimeMs = loadTime, installedModelBytes = size)
-            VokieLog.stt("Model installed and loaded: ${model.id} (${size} bytes, ${loadTime}ms)")
-        } catch (error: Throwable) {
-            fail(mapSttFailure(error, SttErrorCode.MODEL_LOAD_FAILED, error.message ?: "The selected STT model could not be installed."))
         }
     }
 

@@ -14,6 +14,12 @@
       "Resource": "arn:aws:s3:::REPLACE_VOKIE_BUCKET/*"
     },
     {
+      "Sid": "ReadPrivateBundledModelArchive",
+      "Effect": "Allow",
+      "Action": ["s3:GetObject"],
+      "Resource": "arn:aws:s3:::REPLACE_VOKIE_MODELS_BUCKET/models/*"
+    },
+    {
       "Sid": "InvalidateCloudFront",
       "Effect": "Allow",
       "Action": ["cloudfront:CreateInvalidation"],

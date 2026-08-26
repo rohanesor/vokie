@@ -45,8 +45,25 @@ Repository/environment configuration:
 - Secret `AWS_DEPLOY_ROLE_ARN`
 - Variables `AWS_REGION`, `VOKIE_BUCKET`, `VOKIE_CLOUDFRONT_DISTRIBUTION_ID`
 - Android signing secrets above
+- Variable `VOKIE_MODELS_BUCKET`: private model bucket name
+- Variable `VOKIE_MODELS_KEY`: `models/v1.0.0/vokie-models-v1.0.0.tar.zst`
+- Variable `VOKIE_MODELS_SHA256_KEY`: `models/v1.0.0/vokie-models-v1.0.0.sha256`
 
 The release job uses GitHub OIDC and has `id-token: write`; no long-lived AWS access key is used.
+
+## Bundled offline model archive
+
+Production builds are self-contained. The protected archive is never a GitHub asset or secret. Create the isolated private bucket with `infrastructure/cloudformation/vokie-models.yaml`; it has public access blocked and is not connected to CloudFront. The required object path is `s3://<VOKIE_MODELS_BUCKET>/models/v1.0.0/vokie-models-v1.0.0.tar.zst`, with its companion checksum at `s3://<VOKIE_MODELS_BUCKET>/models/v1.0.0/vokie-models-v1.0.0.sha256`.
+
+The `.tar.zst` must contain `models/manifest.json`, `stt/ggml-tiny-q5_1.bin`, and `model.onnx` plus `tokens.txt` for each of `eng`, `hin`, `guj`, `mar`, `kan`, `mal`, `tam`, `tel`, `ory`, and `ben`. The manifest lists an exact SHA-256 and byte size for every one of those 21 files. Upload only after independent verification:
+
+```bash
+sha256sum vokie-models-v1.0.0.tar.zst > vokie-models-v1.0.0.sha256
+aws s3 cp vokie-models-v1.0.0.tar.zst s3://PRIVATE_BUCKET/models/v1.0.0/
+aws s3 cp vokie-models-v1.0.0.sha256 s3://PRIVATE_BUCKET/models/v1.0.0/
+```
+
+`scripts/stage-bundled-models.py` rejects an incomplete or mismatched archive before Gradle runs. The OIDC role reads it only in the ephemeral release runner; the final APK verifier prints every bundled file and its size, and fails closed. On first launch Vokie atomically extracts and re-verifies APK assets to private storage; extraction has no network or import path.
 
 ## Release flow
 

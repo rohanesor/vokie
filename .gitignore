@@ -8,7 +8,10 @@ app/.cxx/
 .idea/
 .DS_Store
 
-# Local speech models are installed on-device, never committed
+# Local speech models and private archive workspaces are never committed
+models/
+.model-audit/
+.quantization-candidates/
 *.ggml
 *.gguf
 ggml-*.bin
@@ -16,4 +19,6 @@ app/src/main/assets/models/
 *.onnx
 vits-mms-*.tar.bz2
 *.vokie-tts-model.zip
+vokie-models-*.tar.zst
+vokie-models-*.sha256
 app/src/main/assets/tts-models/

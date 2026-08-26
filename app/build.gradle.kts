@@ -4,6 +4,8 @@ plugins {
     id("com.google.devtools.ksp")
 }
 
+val productionRelease = providers.gradleProperty("productionRelease").orElse("false").get().toBoolean()
+
 android {
     namespace = "com.vokie"
     val configuredVersionName = providers.gradleProperty("versionName").orElse("1.0.0")
@@ -12,7 +14,6 @@ android {
     val keystorePassword = providers.environmentVariable("ANDROID_KEYSTORE_PASSWORD")
     val keyAlias = providers.environmentVariable("ANDROID_KEY_ALIAS")
     val keyPassword = providers.environmentVariable("ANDROID_KEY_PASSWORD")
-    val productionRelease = providers.gradleProperty("productionRelease").orElse("false").get().toBoolean()
     compileSdk = 34
 
     defaultConfig {
@@ -80,8 +81,24 @@ android {
         }
     }
     ksp { arg("room.schemaLocation", "$projectDir/schemas") }
+    androidResources {
+        // Native engines need filesystem copies; keep APK model entries stored to avoid recompression.
+        noCompress += listOf("bin", "onnx", "txt", "json")
+    }
     packaging {
         resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+    }
+}
+
+// Release assets are staged by scripts/stage-bundled-models.py from a protected archive.
+// Never add model binaries to Git; a production APK without all assets is invalid.
+tasks.configureEach {
+    if (name == "assembleRelease" || name == "bundleRelease") {
+        doFirst {
+            if (productionRelease && !file("src/main/assets/models/manifest.json").isFile) {
+                throw GradleException("Bundled model assets are missing. Run scripts/stage-bundled-models.py in the protected release environment.")
+            }
+        }
     }
 }
 

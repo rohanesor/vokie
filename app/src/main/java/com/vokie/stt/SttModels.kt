@@ -52,7 +52,7 @@ object WhisperTinyMultilingualQ5_1 : SttModel {
     override val approximateRamBytes = 273L * 1024 * 1024
     override val sha256 = "818710568da3ca15689e31a743197b520007872ff9576237bda97bd1b469c3d7"
     override val supportedLanguages = SttLanguage.entries.toSet()
-    override fun localFile(context: Context) = File(File(context.filesDir, "stt-models"), fileName)
+    override fun localFile(context: Context) = File(File(context.filesDir, "models/stt"), fileName)
 }
 
 enum class SttState { UNINITIALIZED, MODEL_MISSING, IMPORTING, VALIDATING, INITIALIZING, READY, LISTENING, PROCESSING, RESULT, ERROR }

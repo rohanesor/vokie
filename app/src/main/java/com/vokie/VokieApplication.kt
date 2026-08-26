@@ -6,6 +6,7 @@ import com.vokie.data.RoomMessageRepository
 import com.vokie.data.local.*
 import com.vokie.domain.model.TransportType
 import com.vokie.map.MapPackManager
+import com.vokie.models.BundledModelStore
 import com.vokie.map.MapPreferences
 import com.vokie.map.OfflineMapUseCase
 import com.vokie.stt.SpeechToTextUseCase
@@ -49,13 +50,23 @@ class VokieApplication : Application() {
         sttEngine = WhisperSttEngine(applicationContext)
         sttLanguagePreferences = SttLanguagePreferences(applicationContext)
         speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)
-        applicationScope.launch { speechToText.initialize() }
+        val bundledModels = BundledModelStore(applicationContext)
         val ttsModels = TtsModelManager(applicationContext)
         val ttsPreferences = TtsPreferences(applicationContext)
         val ttsSpeed = ttsPreferences.speed.stateIn(applicationScope, SharingStarted.Eagerly, DEFAULT_TTS_SPEED)
         ttsEngine = SherpaOnnxTtsEngine(ttsModels, VokieAudioPlayer(applicationContext))
         val ttsQueue = TtsPlaybackQueue(ttsEngine, ttsSpeed, applicationScope)
         textToSpeech = TextToSpeechUseCase(ttsEngine, ttsModels, ttsPreferences, ttsQueue).also { it.start() }
+        applicationScope.launch {
+            // This is a local, atomic APK-asset extraction; it never performs network I/O.
+            runCatching { bundledModels.prepare() }
+                .onFailure { VokieLog.stt("Bundled model preparation failed: ${it.message}") }
+                .onSuccess {
+                    ttsModels.refresh()
+                    speechToText.initialize()
+                    ttsEngine.initialize(TtsLanguage.ENGLISH)
+                }
+        }
         communicationPreferences = CommunicationPreferences(applicationContext)
         val mapManager = MapPackManager(applicationContext)
         val mapPreferences = MapPreferences(applicationContext)

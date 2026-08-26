@@ -8,56 +8,13 @@ Runtime architecture:
 
 The Bluetooth ACK remains immediately after successful Room persistence. TTS enqueueing happens afterwards and cannot delay or redefine peer receipt.
 
-## Verified official MMS catalogue
+## Production model inventory and packaging
 
-The official sherpa-onnx `tts-models` GitHub release was inspected directly. It currently lists eight `vits-mms` archives in total (`nan`, `eng`, `spa`, `fra`, `tha`, `ukr`, `rus`, and `deu`). Only English overlaps Vokie's ten target languages. The following table deliberately does not invent package names for absent conversions.
+The production APK contains verified MMS/VITS assets for `eng`, `hin`, `guj`, `mar`, `kan`, `mal`, `tam`, `tel`, `ory`, and `ben`. The protected release archive manifest is the source of truth for every model and token SHA-256. Model files are supplied to CI from private S3, never committed to Git, never exposed through the public download site, and never downloaded by the application.
 
-| Vokie language | MMS ISO 639-3 | Official sherpa `vits-mms` package | Status |
-|---|---:|---|---|
-| English | `eng` | `vits-mms-eng.tar.bz2` | Implemented |
-| Hindi | `hin` | Not listed | Official pre-converted package unavailable |
-| Gujarati | `guj` | Not listed | Official pre-converted package unavailable |
-| Marathi | `mar` | Not listed | Official pre-converted package unavailable |
-| Kannada | `kan` | Not listed | Official pre-converted package unavailable |
-| Malayalam | `mal` | Not listed | Official pre-converted package unavailable |
-| Tamil | `tam` | Not listed | Official pre-converted package unavailable |
-| Telugu | `tel` | Not listed | Official pre-converted package unavailable |
-| Odia | `ory` | Not listed | Official pre-converted package unavailable |
-| Bengali | `ben` | Not listed | Official pre-converted package unavailable |
+At first launch `BundledModelStore` atomically extracts the APK assets to `files/models/tts/<iso6393>/` and re-verifies every file before it is eligible for loading. Failed or interrupted extraction is not marked ready and is retried locally on next launch; no network or user action is involved.
 
-Meta's original MMS catalogue contains those languages, but an original checkpoint is not the same as an official sherpa-onnx conversion. Vokie reports model unavailability for the nine absent conversions instead of silently substituting a model. Future verified packages can be added through `TtsLanguage`/`TtsModelPackage` without changing capture, queue, UI, inference, or playback layers.
-
-## English model details
-
-| Property | Verified value |
-|---|---|
-| Official archive | `vits-mms-eng.tar.bz2` |
-| Archive size | 107,737,708 bytes |
-| Archive SHA-256 | `8712cb52f71ee00bde27b8c18058d97a794fccf873c4629fbea0de87d31366b4` |
-| ONNX file | `model.onnx` |
-| ONNX size | 114,016,948 bytes |
-| ONNX SHA-256 | `e3a198f6a4473429bab138be040e7cd40d2cab7a31b6410ff0a94d5a7fbbc254` |
-| Tokens file | `tokens.txt` |
-| Tokens size | 303 bytes |
-| Tokens SHA-256 | `dff08580748be688d9112d62d6352422c56d372dfe34b24ea3f66fa1b75cfaa9` |
-| Lexicon | Not required |
-| Data directory | Not required |
-| Sample rate | 16,000 Hz |
-| Quantization | Unquantized FP32 ONNX; no official quantized `vits-mms-eng` variant was listed |
-| Model license | Meta MMS weights: CC-BY-NC-4.0 |
-| sherpa-onnx code | Apache-2.0 |
-
-The CC-BY-NC-4.0 non-commercial restriction requires legal/product review before commercial distribution.
-
-## Packaging decision
-
-Vokie uses **Option C: APK plus separately distributed model packs**.
-
-Bundling one 114 MB model would substantially increase every APK; bundling ten models would be unsuitable for low-end phones and normal Git. Runtime download is intentionally prohibited. Deployment therefore downloads the official archive outside Vokie, verifies its archive checksum, and creates a ZIP containing the unchanged `model.onnx` and `tokens.txt`. The user selects that ZIP through Android's system document picker. `TtsModelManager` performs bounded extraction and verifies each exact file size and SHA-256 before atomically installing it under:
-
-`files/tts-models/<iso6393>/`
-
-No model, model archive, generated PCM, or WAV file is committed. Installed models remain fully offline. Only one sherpa native context is loaded at a time; changing language releases the previous context before loading another.
+Only one sherpa native context is loaded at a time. Changing language releases the previous context before loading the selected language. The currently supplied models are FP32; dynamic INT8 candidates are intentionally not packaged because host validation found changed waveform lengths and slower inference. See [`production-benchmark.md`](production-benchmark.md). The model license requires legal/product review before commercial distribution.
 
 ## Playback and emergency behavior
 
