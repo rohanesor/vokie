@@ -22,3 +22,6 @@ vits-mms-*.tar.bz2
 vokie-models-*.tar.zst
 vokie-models-*.sha256
 app/src/main/assets/tts-models/
+
+# Physical-device logs may contain device identifiers and speech results.
+device-metrics/
