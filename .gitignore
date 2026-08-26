@@ -10,6 +10,8 @@ app/.cxx/
 
 # Local speech models and private archive workspaces are never committed
 models/
+.model-audit/
+.quantization-candidates/
 *.ggml
 *.gguf
 ggml-*.bin
