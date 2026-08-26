@@ -26,7 +26,8 @@ import kotlin.time.Duration.Companion.seconds
 /** Real classic Bluetooth RFCOMM transport. UI only sees the Transport contract. */
 class BluetoothTransport(private val context: Context, private val scope: kotlinx.coroutines.CoroutineScope) : Transport {
     override val type = TransportType.BLUETOOTH
-    private val adapter: BluetoothAdapter? = (context.getSystemService(BluetoothAdapter::class.java))
+    // BluetoothAdapter is obtained from BluetoothManager; it is not itself a system service.
+    private val adapter: BluetoothAdapter? = context.getSystemService(android.bluetooth.BluetoothManager::class.java)?.adapter
     private val _peers = MutableStateFlow<List<Peer>>(emptyList())
     override val peers: StateFlow<List<Peer>> = _peers.asStateFlow()
     private val _state = MutableStateFlow(initialState())

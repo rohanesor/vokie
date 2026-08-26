@@ -49,6 +49,9 @@ class WhisperSttEngine(
                 moveTo(SttState.READY)
                 return@withLock
             }
+            // Compose may request initialization during an active voice operation.
+            // The native context is valid; reinitializing would violate the state machine.
+            if (stateMachine.state in setOf(SttState.PROCESSING, SttState.LISTENING)) return@withLock
         }
         moveTo(SttState.INITIALIZING)
         if (!modelStore.isInstalled()) {

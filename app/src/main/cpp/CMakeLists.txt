@@ -4,6 +4,19 @@ project(vokie_whisper LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+# Android Gradle uses Debug for debug APKs and RelWithDebInfo for release APKs.
+# Keep GGML/whisper compute kernels optimized in both variants; JNI-only flags are insufficient.
+set(CMAKE_C_FLAGS_DEBUG "-O2 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_DEBUG "-O2 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELWITHDEBINFO "-O3 -g -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_C_FLAGS_RELEASE "-O3 -DNDEBUG" CACHE STRING "" FORCE)
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG" CACHE STRING "" FORCE)
+# Enable ARMv8.2 NEON/dot-product/FP16 only for arm64. Applying those flags to
+# armeabi-v7a would produce an incompatible binary, so the 32-bit ABI remains portable.
+if (ANDROID_ABI STREQUAL "arm64-v8a")
+    set(GGML_CPU_ARM_ARCH "armv8.2-a+dotprod+fp16" CACHE STRING "" FORCE)
+endif()
 # whisper.cpp has several large translation units; cap native compile concurrency for low-memory CI/dev hosts.
 set_property(GLOBAL PROPERTY JOB_POOLS vokie_compile_pool=2)
 set(CMAKE_JOB_POOL_COMPILE vokie_compile_pool)
