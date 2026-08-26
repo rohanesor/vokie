@@ -19,4 +19,6 @@ app/src/main/assets/models/
 *.onnx
 vits-mms-*.tar.bz2
 *.vokie-tts-model.zip
+vokie-models-*.tar.zst
+vokie-models-*.sha256
 app/src/main/assets/tts-models/
