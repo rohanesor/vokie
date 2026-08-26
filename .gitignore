@@ -8,7 +8,8 @@ app/.cxx/
 .idea/
 .DS_Store
 
-# Local speech models are installed on-device, never committed
+# Local speech models and private archive workspaces are never committed
+models/
 *.ggml
 *.gguf
 ggml-*.bin
