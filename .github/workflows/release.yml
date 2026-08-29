@@ -1,4 +1,4 @@
-name: Vokie Release
+name: iTantra Release
 
 on:
   push:
@@ -216,14 +216,14 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
-          name: Vokie ${{ github.ref_name }}
+          name: iTantra ${{ github.ref_name }}
           generate_release_notes: true
           body: |
-            ## Vokie ${{ github.ref_name }}
+            ## iTantra ${{ github.ref_name }}
 
-            Voice when networks fail.
+            Offline multilingual communication for low-bitrate links.
 
-            This release was built from `${{ github.sha }}`. See the Vokie download website for the production APK and SHA-256 verification.
+            This release was built from `${{ github.sha }}`. See the iTantra download website for the production APK and SHA-256 verification.
           files: |
             release/Vokie-${{ github.ref_name }}.apk
             release/Vokie-${{ github.ref_name }}.apk.sha256

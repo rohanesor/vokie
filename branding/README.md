@@ -1,4 +1,4 @@
-# Official Vokie artwork
+# Official iTantra artwork
 
 `vokie-official-supplied.png` is the supplied presentation sheet and remains the authoritative checked-in source.
 

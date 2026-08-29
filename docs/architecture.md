@@ -1,12 +1,12 @@
-# Vokie architecture
+# iTantra architecture
 
-Vokie is an Android-first, offline-first emergency communication application. AWS exists only to distribute signed APKs and static documentation; it is not part of runtime communication.
+iTantra is an Android-first, offline-first emergency communication application. AWS exists only to distribute signed APKs and static documentation; it is not part of runtime communication.
 
 ## Runtime layers
 
 `Compose UI → ViewModel/use cases → repositories → Transport / ML / Room implementations`
 
-The UI never accesses Android Bluetooth APIs directly. `Transport` is the boundary for Bluetooth, Wi-Fi Direct, and future ultrasonic implementations. The current real transport is classic Bluetooth RFCOMM with the Vokie service UUID, protocol-versioned envelopes, length framing, receiver ACKs, timeout, and disconnect state.
+The UI never accesses Android Bluetooth APIs directly. `Transport` is the boundary for Bluetooth, Wi-Fi Direct, and future ultrasonic implementations. The current real transport is classic Bluetooth RFCOMM with the iTantra service UUID, protocol-versioned envelopes, length framing, receiver ACKs, timeout, and disconnect state.
 
 The local pipeline is:
 
@@ -18,7 +18,7 @@ Cloud STT, cloud TTS, accounts, servers, and internet delivery are not used.
 
 ### IMPLEMENTED
 
-- Compose Material 3 UI and Vokie design tokens
+- Compose Material 3 UI and iTantra design tokens
 - Android 7.0+ baseline (`minSdk 24`), target SDK 34
 - Contextual Nearby Devices permission request
 - Real Bluetooth RFCOMM peer service identity, discoverability and discovery filtering

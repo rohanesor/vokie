@@ -1,4 +1,4 @@
-name: Vokie CI
+name: iTantra CI
 
 on:
   push:
@@ -45,7 +45,7 @@ jobs:
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: vokie-debug-${{ github.sha }}
+          name: itantra-debug-${{ github.sha }}
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
           retention-days: 14

@@ -1,6 +1,6 @@
 # Offline MMS-TTS with sherpa-onnx
 
-Vokie uses the official **sherpa-onnx 1.13.6 Android AAR** and its offline VITS API. The AAR is resolved at build time from the pinned official GitHub release (`sherpa-onnx-1.13.6.aar`, 49,097,942 bytes, SHA-256 `0012d9a28f15bd6fb966b62b70a75da3990512fdccce28b83098248ce4be1698`). The installed app has no Internet permission and contains no model downloader, cloud TTS, Android system-TTS fallback, or server integration.
+iTantra uses the official **sherpa-onnx 1.13.6 Android AAR** and its offline VITS API. The AAR is resolved at build time from the pinned official GitHub release (`sherpa-onnx-1.13.6.aar`, 49,097,942 bytes, SHA-256 `0012d9a28f15bd6fb966b62b70a75da3990512fdccce28b83098248ce4be1698`). The installed app has no Internet permission and contains no model downloader, cloud TTS, Android system-TTS fallback, or server integration.
 
 Runtime architecture:
 
@@ -18,7 +18,7 @@ Only one sherpa native context is loaded at a time. Changing language releases t
 
 ## Playback and emergency behavior
 
-Normal speech uses transient-may-duck audio focus and accessibility/speech audio attributes. SOS speech is placed at the front of the pending queue, can preempt normal playback, uses alarm usage with transient-exclusive focus, requests maximum application gain, and repeats twice. Vokie does **not** override system volume or claim non-interruptible playback. Explicit **Play message**, **Stop speech**, and **Acknowledged — stop alert** controls remain available while text is always readable.
+Normal speech uses transient-may-duck audio focus and accessibility/speech audio attributes. SOS speech is placed at the front of the pending queue, can preempt normal playback, uses alarm usage with transient-exclusive focus, requests maximum application gain, and repeats twice. iTantra does **not** override system volume or claim non-interruptible playback. Explicit **Play message**, **Stop speech**, and **Acknowledged — stop alert** controls remain available while text is always readable.
 
 PCM is played directly from memory with `AudioTrack` (`ENCODING_PCM_FLOAT`, mono). Audio is bounded to 120 seconds and no temporary WAV is created.
 

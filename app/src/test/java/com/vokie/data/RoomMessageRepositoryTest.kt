@@ -12,7 +12,7 @@ import org.junit.Test
 class RoomMessageRepositoryTest {
     @Test fun queueTransitionsAndManualRetryArePersisted() = runBlocking {
         val dao = MemoryMessageDao(); val repository = RoomMessageRepository(dao)
-        val message = repository.createMessage("Hello from Vokie", "sender", "peer", VokieLanguage.EN)
+        val message = repository.createMessage("Hello from iTantra", "sender", "peer", VokieLanguage.EN)
         assertEquals(DeliveryState.QUEUED, repository.getMessage(message.id)?.deliveryState)
         repository.markTransmitting(message.id, TransportType.BLUETOOTH)
         assertEquals(DeliveryState.TRANSMITTING, repository.getMessage(message.id)?.deliveryState)

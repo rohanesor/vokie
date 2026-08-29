@@ -1,6 +1,6 @@
 # Offline multilingual STT
 
-Vokie uses **whisper.cpp v1.7.6** through one JNI library (`vokie_whisper`). There is no speech service, network client, runtime model download, or Android/Google speech recognizer in this path.
+iTantra uses **whisper.cpp v1.7.6** through one JNI library (`vokie_whisper`). There is no speech service, network client, runtime model download, or Android/Google speech recognizer in this path.
 
 ## Runtime path
 

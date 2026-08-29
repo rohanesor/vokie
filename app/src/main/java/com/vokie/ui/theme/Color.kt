@@ -3,7 +3,7 @@ package com.vokie.ui.theme
 import androidx.compose.ui.graphics.Color
 
 /**
- * Vokie exact design palette.
+ * iTantra exact design palette.
  * The alert red is reserved ONLY for emergency/SOS actions and critical danger states.
  */
 object VokiePalette {

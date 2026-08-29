@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create a deterministic audit of staged Vokie ONNX model files; requires `onnx`."""
+"""Create a deterministic audit of staged iTantra ONNX model files; requires `onnx`."""
 import argparse, hashlib, json
 from collections import Counter, defaultdict
 from pathlib import Path

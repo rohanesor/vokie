@@ -1,12 +1,12 @@
-# Vokie
+# iTantra
 
-## Voice when networks fail.
+## Indian Multilingual TTS & STT Aided Neural Transceiver Radio Access for Low-Bitrate Links
 
-Vokie is an offline-first Android application for multilingual emergency communication when conventional networks are unavailable. It converts speech to local text, transfers compact text over nearby peer-to-peer transports, and plays received text locally.
+iTantra is an offline-first Android application for multilingual emergency communication when conventional networks are unavailable. It converts speech to local text, transfers compact text over nearby peer-to-peer transports, and plays received text locally.
 
 ## Current status
 
-- **IMPLEMENTED:** Kotlin, Jetpack Compose, Material 3, dark-first emergency UI, Gradle wrapper, real Bluetooth RFCOMM transport, Vokie service UUID filtering, discovery/discoverability, connector/server roles, compact binary protocol, persistence-before-ACK, Room message/peer/event storage, bounded persistent outbound queue, real text composer, local AudioRecord capture, energy VAD, whisper.cpp JNI inference, sherpa-onnx MMS/VITS synthesis, direct PCM playback, multilingual language persistence, CI/CD definitions, private S3 + CloudFront infrastructure, and static download website.
+- **IMPLEMENTED:** Kotlin, Jetpack Compose, Material 3, dark-first emergency UI, Gradle wrapper, real Bluetooth RFCOMM transport, iTantra service UUID filtering, discovery/discoverability, connector/server roles, compact binary protocol, persistence-before-ACK, Room message/peer/event storage, bounded persistent outbound queue, real text composer, local AudioRecord capture, energy VAD, whisper.cpp JNI inference, sherpa-onnx MMS/VITS synthesis, direct PCM playback, multilingual language persistence, CI/CD definitions, private S3 + CloudFront infrastructure, and static download website.
 - **IN PROGRESS:** Physical two-device interoperability, on-device STT/TTS performance validation, and verified MMS conversions for nine target languages absent from the official sherpa catalogue.
 - **PLANNED:** Wi-Fi Direct fallback, relay, and ultrasonic transport.
 

@@ -10,7 +10,7 @@ import java.util.UUID
 /** Compact deterministic binary protocol. Audio is never transmitted. */
 object VokieProtocol {
     const val VERSION = 1
-    const val SERVICE_NAME = "Vokie Emergency Communication"
+    const val SERVICE_NAME = "iTantra Emergency Communication"
     val SERVICE_UUID: UUID = UUID.fromString("8f6f3a10-4c5b-4d22-9f1c-2c7d9f4e1a01")
     const val MAX_FRAME_BYTES = 16 * 1024
     const val MAX_TEXT_CHARS = 4096
@@ -40,7 +40,7 @@ object VokieProtocol {
         require(bytes.isNotEmpty() && bytes.size <= MAX_FRAME_BYTES) { "Invalid frame size" }
         return DataInputStream(ByteArrayInputStream(bytes)).use { input ->
             require(input.readUnsignedShort() == MAGIC) { "Invalid protocol magic" }
-            require(input.readUnsignedByte() == VERSION) { "Unsupported Vokie protocol version" }
+            require(input.readUnsignedByte() == VERSION) { "Unsupported iTantra protocol version" }
             when (input.readUnsignedByte()) {
                 KIND_MESSAGE -> {
                     val message = Message(

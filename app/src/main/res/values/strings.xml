@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Vokie</string>
-    <string name="app_tagline">Voice when networks fail.</string>
-    <string name="app_subtitle">Offline Emergency Communication</string>
+    <string name="app_name">iTantra</string>
+    <string name="app_tagline">Offline multilingual communication for low-bitrate links.</string>
+    <string name="app_subtitle">Indian Multilingual TTS &amp; STT Aided Neural Transceiver</string>
 </resources>

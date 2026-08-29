@@ -40,6 +40,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -125,18 +126,18 @@ private data class BluetoothUi(val label: String, val detail: String, val color:
 private fun bluetoothUi(state: TransportConnectionState): BluetoothUi = when (state) {
     TransportConnectionState.UNAVAILABLE -> BluetoothUi("UNAVAILABLE", "Bluetooth hardware is not available on this phone.", VokieTheme.colors.alert, false)
     TransportConnectionState.PERMISSION_REQUIRED -> BluetoothUi("PERMISSION REQUIRED", "Nearby Devices permission is required to communicate.", VokieTheme.colors.warning, true)
-    TransportConnectionState.BLUETOOTH_DISABLED -> BluetoothUi("TURNED OFF", "Turn on Bluetooth to discover nearby Vokie phones.", VokieTheme.colors.warning, false)
+    TransportConnectionState.BLUETOOTH_DISABLED -> BluetoothUi("TURNED OFF", "Turn on Bluetooth to discover nearby iTantra phones.", VokieTheme.colors.warning, false)
     TransportConnectionState.SEARCHING -> BluetoothUi("SCANNING", "Searching for protocol-compatible nearby devices.", VokieTheme.colors.accent, true)
     TransportConnectionState.CONNECTING -> BluetoothUi("CONNECTING", "Establishing a secure nearby connection.", VokieTheme.colors.accent, true)
-    TransportConnectionState.CONNECTED -> BluetoothUi("CONNECTED", "A Vokie peer is connected.", VokieTheme.colors.success, true)
+    TransportConnectionState.CONNECTED -> BluetoothUi("CONNECTED", "An iTantra peer is connected.", VokieTheme.colors.success, true)
     TransportConnectionState.FAILED -> BluetoothUi("FAILED", "The last Bluetooth operation failed. You can try again.", VokieTheme.colors.alert, true)
-    TransportConnectionState.IDLE, TransportConnectionState.DISCONNECTED -> BluetoothUi("READY", "Bluetooth is available. No Vokie peer is connected.", VokieTheme.colors.success, true)
+    TransportConnectionState.IDLE, TransportConnectionState.DISCONNECTED -> BluetoothUi("READY", "Bluetooth is available. No iTantra peer is connected.", VokieTheme.colors.success, true)
 }
 
 @Composable
 private fun ScreenHeader(title: String, subtitle: String) {
     Column(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp)) {
-        Text("VOKIE", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.accent, letterSpacing = 2.sp)
+        Text(stringResource(R.string.app_name), style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.accent, letterSpacing = 2.sp)
         Spacer(Modifier.height(4.dp))
         Text(title, style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary)
         Text(subtitle, style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 4.dp))
@@ -232,9 +233,9 @@ fun HomeScreen(onCommunicate: () -> Unit, onSos: () -> Unit, vm: CommunicationVi
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item {
             Row(Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 20.dp), verticalAlignment = Alignment.CenterVertically) {
-                Image(painterResource(R.drawable.vokie_logo), "Official Vokie logo", Modifier.size(64.dp))
+                Image(painterResource(R.drawable.vokie_logo), "Official iTantra logo", Modifier.size(64.dp))
                 Spacer(Modifier.width(14.dp))
-                Column { Text("VOKIE", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary); Text("Voice when networks fail.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) }
+                Column { Text(stringResource(R.string.app_name), style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary); Text(stringResource(R.string.app_tagline), style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary) }
             }
         }
         item {
@@ -245,7 +246,7 @@ fun HomeScreen(onCommunicate: () -> Unit, onSos: () -> Unit, vm: CommunicationVi
                 }
                 Spacer(Modifier.height(16.dp))
                 Text("No safety status selected", style = VokieTheme.typography.headerSmall, color = VokieTheme.colors.textPrimary)
-                Text("Vokie will never assume you are safe. Use Check-in when you are ready to broadcast a real status.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
+                Text("iTantra will never assume you are safe. Use Check-in when you are ready to broadcast a real status.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
                 HorizontalDivider(Modifier.padding(vertical = 16.dp), color = VokieTheme.colors.border)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                     Column(Modifier.weight(1f)) { Text("Bluetooth", style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary); Text(bt.detail, style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, maxLines = 2) }
@@ -302,7 +303,7 @@ fun SosSheet(onDismiss: () -> Unit, vm: CommunicationViewModel = viewModel()) {
         Column(Modifier.padding(horizontal = 24.dp).padding(bottom = 24.dp).navigationBarsPadding()) {
             StatusBadge("CRITICAL ACTION", VokieTheme.colors.alert)
             Text("Send emergency SOS", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 16.dp))
-            Text("The message is stored locally first, then sent to the connected Vokie peer or held safely in the offline queue.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
+            Text("The message is stored locally first, then sent to the connected iTantra peer or held safely in the offline queue.", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 8.dp))
             Text("Transport  •  ${if (connectedPeer == null) "No peer — will queue" else "Bluetooth connected"}", style = VokieTheme.typography.labelSmall, color = if (connectedPeer == null) VokieTheme.colors.warning else VokieTheme.colors.success, modifier = Modifier.padding(top = 16.dp))
             OutlinedTextField(
                 value = message,
@@ -363,7 +364,7 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
             pendingPeer != null -> pendingPeer?.let(vm::connect)
             else -> vm.discover()
         } else {
-            vm.reportError("Nearby Devices permission is required to discover and communicate with nearby Vokie phones.")
+            vm.reportError("Nearby Devices permission is required to discover and communicate with nearby iTantra phones.")
             pendingPeer = null; pendingVisibility = false
         }
     }
@@ -412,7 +413,7 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
                     modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
                 )
                 PrimaryAction(
-                    if (state == TransportConnectionState.SEARCHING) "SCANNING FOR DEVICES" else "FIND NEARBY VOKIE DEVICES",
+                    if (state == TransportConnectionState.SEARCHING) "SCANNING FOR DEVICES" else "FIND NEARBY iTANTRA DEVICES",
                     Icons.Default.Search,
                     onClick = { pendingVisibility = false; pendingPeer = null; if (BluetoothPermission.hasDiscovery(context)) vm.discover() else permissions.launch(BluetoothPermission.discoveryPermissions()) },
                     enabled = actionsEnabled && state != TransportConnectionState.CONNECTING,
@@ -423,8 +424,8 @@ fun CommunicateScreen(vm: CommunicationViewModel = viewModel()) {
             }
         }
         item {
-            if (peers.isEmpty()) EmptyState(Icons.AutoMirrored.Filled.BluetoothSearching, "No nearby Vokie devices", if (state == TransportConnectionState.SEARCHING) "Scanning is active. Compatible devices will appear here." else "Make one phone visible, then scan from the other phone.", Modifier.padding(horizontal = 20.dp, vertical = 14.dp))
-            else SectionLabel("NEARBY VOKIE DEVICES", Modifier.padding(horizontal = 20.dp).padding(top = 20.dp, bottom = 8.dp))
+            if (peers.isEmpty()) EmptyState(Icons.AutoMirrored.Filled.BluetoothSearching, "No nearby iTantra devices", if (state == TransportConnectionState.SEARCHING) "Scanning is active. Compatible devices will appear here." else "Make one phone visible, then scan from the other phone.", Modifier.padding(horizontal = 20.dp, vertical = 14.dp))
+            else SectionLabel("NEARBY iTANTRA DEVICES", Modifier.padding(horizontal = 20.dp).padding(top = 20.dp, bottom = 8.dp))
         }
         items(peers, key = { it.id }) { peer ->
             VokiePanel(Modifier.padding(horizontal = 20.dp, vertical = 5.dp).fillMaxWidth()) {
@@ -781,7 +782,7 @@ private fun formatBytes(bytes: Long): String = when {
 fun AlertsScreen() {
     LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
         item { ScreenHeader("Emergency alerts", "Locally stored alerts remain readable without a network.") }
-        item { EmptyState(Icons.Default.NotificationsNone, "No emergency alerts", "No alert records are stored on this device. Vokie will not fabricate an active warning.", Modifier.padding(horizontal = 20.dp)) }
+        item { EmptyState(Icons.Default.NotificationsNone, "No emergency alerts", "No alert records are stored on this device. iTantra will not fabricate an active warning.", Modifier.padding(horizontal = 20.dp)) }
         item {
             VokiePanel(Modifier.padding(horizontal = 20.dp).fillMaxWidth()) {
                 SectionLabel("SEVERITY KEY")
@@ -865,11 +866,11 @@ private fun SettingRow(info: SettingInfo) {
 private fun AboutCard() {
     VokiePanel(Modifier.padding(20.dp).fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.vokie_logo), "Official Vokie logo", Modifier.size(84.dp))
-            Column(Modifier.padding(start = 16.dp)) { Text("VOKIE", style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary); Text("Voice when networks fail.", style = VokieTheme.typography.label, color = VokieTheme.colors.textSecondary); Text("Version ${BuildConfig.VERSION_NAME}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp)) }
+            Image(painterResource(R.drawable.vokie_logo), "Official iTantra logo", Modifier.size(84.dp))
+            Column(Modifier.padding(start = 16.dp)) { Text(stringResource(R.string.app_name), style = VokieTheme.typography.header, color = VokieTheme.colors.textPrimary); Text(stringResource(R.string.app_tagline), style = VokieTheme.typography.label, color = VokieTheme.colors.textSecondary); Text("Version ${BuildConfig.VERSION_NAME}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp)) }
         }
         HorizontalDivider(Modifier.padding(vertical = 16.dp), color = VokieTheme.colors.border)
-        Text("Offline multilingual emergency communication.", style = VokieTheme.typography.body, color = VokieTheme.colors.textPrimary)
+        Text(stringResource(R.string.app_subtitle), style = VokieTheme.typography.body, color = VokieTheme.colors.textPrimary)
         Text("Bluetooth RFCOMM peer transport — implemented\nWhisper.cpp STT — implemented\nMMS-TTS via sherpa-onnx — implemented\nOffline map regions — implemented\nWi-Fi Direct and ultrasonic — planned", style = VokieTheme.typography.body, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 10.dp))
     }
 }

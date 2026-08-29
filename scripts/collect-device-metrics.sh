@@ -16,7 +16,7 @@ mkdir -p "$(dirname "$out")"
   "$adb_bin" shell dumpsys meminfo com.vokie
   echo '--- process CPU snapshot ---'
   "$adb_bin" shell top -b -n 1 -o PID,CPU,RES,ARGS | grep com.vokie || true
-  echo '--- Vokie STT/TTS/Bluetooth logs ---'
+  echo '--- iTantra STT/TTS/Bluetooth logs ---'
   "$adb_bin" logcat -d -v threadtime -s 'VOKIE][STT:D' 'VOKIE][TTS:D' 'VOKIE][BT:D' '*:S' || true
 } | tee "$out"
 echo "Saved $out"

@@ -19,7 +19,7 @@ ADB=/tmp/android-sdk/platform-tools/adb scripts/collect-device-metrics.sh stt-pr
 ADB=/tmp/android-sdk/platform-tools/adb scripts/collect-device-metrics.sh tts-playing
 ```
 
-Vokie writes measured STT processing time and RTF to the `VOKIE][STT` log tag. Capture one snapshot after each utterance.
+iTantra writes measured STT processing time and RTF to the `VOKIE][STT` log tag. Capture one snapshot after each utterance.
 
 ## Results
 

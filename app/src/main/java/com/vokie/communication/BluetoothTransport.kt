@@ -62,7 +62,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                     val uuids = IntentCompat.getParcelableArrayExtra(intent, BluetoothDevice.EXTRA_UUID, android.os.ParcelUuid::class.java)?.mapNotNull { (it as? android.os.ParcelUuid)?.uuid } ?: emptyList()
                     if (VokieProtocol.SERVICE_UUID in uuids) {
                         val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).takeIf { it != Short.MIN_VALUE }?.toInt()
-                        val peer = Peer(device.address, device.name ?: "Unnamed Vokie device", device.address, device.bondState == BluetoothDevice.BOND_BONDED, rssi)
+                        val peer = Peer(device.address, device.name ?: "Unnamed iTantra device", device.address, device.bondState == BluetoothDevice.BOND_BONDED, rssi)
                         _peers.update { old -> (old.filterNot { it.address == peer.address } + peer).sortedBy { it.name } }
                     }
                 }
@@ -145,7 +145,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     override suspend fun disconnect() = withContext(Dispatchers.IO) { manuallyDisconnected = true; reconnectPeerId = null; reconnectJob?.cancel(); reconnectJob = null; closeSocket(); closeServer(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Disconnected") }
 
     override suspend fun send(message: Message): SendResult = withContext(Dispatchers.IO) {
-        val stream = output ?: return@withContext SendResult(message.id, false, error = "No connected Vokie device")
+        val stream = output ?: return@withContext SendResult(message.id, false, error = "No connected iTantra device")
         val waiter = ackTracker.register(message.id)
         try {
             val frame = VokieProtocol.encode(message)
@@ -170,7 +170,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
             try {
                 while (connectionState.value == TransportConnectionState.CONNECTED) {
                     val size = input?.readInt() ?: break
-                    if (size <= 0 || size > 64 * 1024) throw IOException("Invalid Vokie frame size")
+                    if (size <= 0 || size > 64 * 1024) throw IOException("Invalid iTantra frame size")
                     val bytes = ByteArray(size); input!!.readFully(bytes)
                     when (val frame = VokieProtocol.decode(bytes)) {
                         is VokieProtocol.DecodedFrame.Ack -> if (!ackTracker.acknowledge(frame.messageId)) VokieLog.msg("Unknown ACK ignored: ${frame.messageId}")
@@ -200,7 +200,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                     reconnectPeerId = null
                     _connectedPeerId.value = accepted.remoteDevice.address
                     _state.value = TransportConnectionState.CONNECTED
-                    VokieLog.bt("Incoming Vokie connection established")
+                    VokieLog.bt("Incoming iTantra connection established")
                     listenForFrames()
                 }
             }.onFailure { if (_state.value != TransportConnectionState.CONNECTED) VokieLog.bt("Server stopped: ${it.message}") }

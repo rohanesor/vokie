@@ -19,7 +19,7 @@ The verified archive contains exactly 21 required model files: one 32,152,673-by
 
 ## INT8 candidate investigation
 
-ONNX Runtime dynamic QInt8 candidates were generated outside production assets. They were structurally valid, but are **not approved for Vokie production**: deterministic host inference was substantially slower than FP32 and six languages changed generated waveform length. No candidate is packaged in the release path.
+ONNX Runtime dynamic QInt8 candidates were generated outside production assets. They were structurally valid, but are **not approved for iTantra production**: deterministic host inference was substantially slower than FP32 and six languages changed generated waveform length. No candidate is packaged in the release path.
 
 | Language | FP32 bytes | INT8 candidate bytes | Ratio | FP32 init ms | INT8 init ms | FP32 inference ms | INT8 inference ms | Result |
 |---|---:|---:|---:|---:|---:|---:|---:|---|

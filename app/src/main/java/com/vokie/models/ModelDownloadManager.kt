@@ -29,7 +29,7 @@ class ModelDownloadManager(private val context: Context, private val bundled: Bu
     val state: StateFlow<DownloadState> = _state.asStateFlow()
 
     suspend fun download(language: TtsLanguage) = withContext(Dispatchers.IO) {
-        require(language != TtsLanguage.ENGLISH) { "English is included in Vokie." }
+        require(language != TtsLanguage.ENGLISH) { "English is included in iTantra." }
         val model = bundled.spec("tts/${language.iso6393}/model.onnx")
         val tokens = bundled.spec("tts/${language.iso6393}/tokens.txt")
         requireFreeSpace(model.sizeBytes + tokens.sizeBytes + SAFETY_BYTES)

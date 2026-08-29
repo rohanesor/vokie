@@ -88,4 +88,4 @@ aws cloudfront create-invalidation --distribution-id "$distribution" --paths \
 aws s3api head-object --bucket "$bucket" --key "$versioned/Vokie-v${version}.apk" --region "$region" >/dev/null
 aws s3api head-object --bucket "$bucket" --key "downloads/latest/Vokie-latest.apk" --region "$region" >/dev/null
 aws s3api head-object --bucket "$bucket" --key "release.json" --region "$region" >/dev/null
-echo "Published Vokie v${version} (versionCode=${version_code:-unknown}, sha=${sha}) to s3://${bucket} and invalidated CloudFront ${distribution}."
+echo "Published iTantra v${version} (versionCode=${version_code:-unknown}, sha=${sha}) to s3://${bucket} and invalidated CloudFront ${distribution}."

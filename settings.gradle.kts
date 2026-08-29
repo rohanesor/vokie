@@ -29,5 +29,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Vokie"
+rootProject.name = "iTantra"
 include(":app")

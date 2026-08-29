@@ -5,12 +5,12 @@
   fetch('release.json', { cache: 'no-store' })
     .then((response) => { if (!response.ok) throw new Error('No release metadata'); return response.json(); })
     .then((release) => {
-      set('release-version', `Vokie ${release.version}`);
+      set('release-version', `iTantra ${release.version}`);
       set('release-min-android', release.minAndroid || 'Android 7.0+');
       set('release-size', release.size || '—');
       set('release-date', release.date || '—');
       set('release-sha', release.sha256 || '—');
-      set('release-title', `Vokie ${release.version}`);
+      set('release-title', `iTantra ${release.version}`);
       set('release-summary', release.commit ? `Built from ${release.commit.slice(0, 12)}.` : 'Signed Android release.');
       const url = release.downloadUrl || `downloads/${release.version}/Vokie-${release.version}.apk`;
       byId('release-download').href = url;
