@@ -15,7 +15,7 @@ A model trained solely from licensed data may be distributable only after review
 
 ## Result
 
-- **IndicVoices-R:** Conditional candidate. The official source explicitly provides CC-BY-4.0 license text. Zenodo version record `14016558` supplies a CC-BY-4.0 repository snapshot only, not data. Every documented target object URL returned HTTP 403 AccessDenied, and neither the repository nor Zenodo release provides per-language archive checksums/manifests.
+- **IndicVoices-R:** Conditional candidate. Official HF dataset card revision `5f4495c91d500742a58d1be2ab07d77f73c0acf8` declares `license: cc-by-4.0`, identifies WAV/48-kHz data, normalized/verbatim transcripts, speaker/gender metadata, and citation. It does not state trained-weight, APK/S3/CloudFront, consent, or speaker-metadata redistribution terms beyond the CC-BY declaration. Zenodo version record `14016558` supplies a CC-BY-4.0 repository snapshot only, not data. Individual LFS shard SHA-256 values are visible in the official HF file index, while Viewer access to per-row data requires authentication.
 - **LibriTTS:** Conditional candidate. OpenSLR explicitly declares CC-BY-4.0 and 585-hour/24-kHz corpus facts, but fine-grained archive manifest/checksum/speaker metadata was not acquired without downloading archives.
 - **Commercial trained-model distribution:** **BLOCKED pending legal/data-card review and exact artifact acquisition.** This is not a conclusion that CC-BY forbids training or shipment; it is a refusal to claim downstream legal certainty without the complete evidence chain.
 

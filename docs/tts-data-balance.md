@@ -2,7 +2,21 @@
 
 ## Current result
 
-No per-record manifests were available in Phase 2F or 2G. Phase 2G verified that the official Zenodo artifact is a repository snapshot only and that documented per-language audio URLs return HTTP 403 AccessDenied. Therefore hours/language, utterances/language, speakers/language, gender distribution, hours/speaker, average/median duration, dominant speakers, and single-speaker risks are all **UNKNOWN**. The aggregate IndicVoices-R total cannot establish balance for any target language.
+Phase 2G verified that the Zenodo artifact is a repository snapshot only and that old object URLs return HTTP 403. Phase 2G authenticated-metadata preparation found the official HF card/file index: total utterance counts are now known, but duration, unique speakers, gender distribution, hours/speaker, average/median duration, dominant speakers, and single-speaker risks remain **UNKNOWN** until authenticated per-row metadata is queried.
+
+| Language | Total utterances | Download bytes |
+|---|---:|---:|
+| Hindi | 26,694 | 47,225,888,374 |
+| Gujarati | 1,791 | 2,889,359,875 |
+| Marathi | 19,141 | 31,434,459,154 |
+| Kannada | 17,328 | 27,604,791,540 |
+| Malayalam | 31,503 | 52,034,095,360 |
+| Tamil | 39,585 | 63,139,582,505 |
+| Telugu | 47,547 | 86,122,150,914 |
+| Odia | 25,565 | 44,466,622,775 |
+| Bengali | 40,192 | 72,237,562,604 |
+
+The utterance count range is 1,791 Gujarati to 47,547 Telugu (26.5×). This is severe known imbalance; do not choose language sampling weights until duration and speaker distribution are measured.
 
 ## Required calculation
 

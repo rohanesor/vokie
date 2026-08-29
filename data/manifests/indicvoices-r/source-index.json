@@ -13,6 +13,12 @@
     "localVerifiedSha256": "835d1ab9940449a795a78ca949099dff9d41c0183ace35431151416cf1168798",
     "contents": "repository snapshot and download instructions only; no audio or per-language manifests"
   },
+  "huggingFaceDataset": {
+    "id": "ai4bharat/indicvoices_r",
+    "revision": "5f4495c91d500742a58d1be2ab07d77f73c0acf8",
+    "metadataManifest": "hf-metadata-5f4495c.json",
+    "note": "This is a distinct Hugging Face dataset revision; the GitHub repository revision is invalid as a Hugging Face revision."
+  },
   "license": "CC-BY-4.0",
   "licenseFile": "https://github.com/AI4Bharat/IndicVoices-R/blob/4d77d8a402b680fb739c1a6a3ec531de0cf17139/LICENSE.md",
   "sourceIndex": "https://github.com/AI4Bharat/IndicVoices-R/blob/4d77d8a402b680fb739c1a6a3ec531de0cf17139/data_links.txt",
