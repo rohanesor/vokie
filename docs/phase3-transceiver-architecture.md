@@ -32,4 +32,4 @@ The receiver uses the packet language code; it does not ask the operator to sele
 
 ## Not yet claimed
 
-Wi-Fi Direct, automatic Whisper language extraction, Packet v2 fragmentation/replay protection, and physical-device latency/RAM/CPU metrics require implementation and real-device validation. No measurements are fabricated.
+Automatic Whisper language extraction, full TransportManager Wi-Fi priority/fallback wiring, persistent replay inbox state, and physical-device latency/RAM/CPU metrics require implementation and real-device validation. The native Wi-Fi Direct transport and length-prefixed framing now exist, but are not device-validated. No measurements are fabricated.
