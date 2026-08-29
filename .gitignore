@@ -7,8 +7,14 @@ app/.cxx/
 *.iml
 .idea/
 .DS_Store
+__pycache__/
+*.py[cod]
 
 # Local speech models and private archive workspaces are never committed
+# Only reviewed source indexes under data/manifests are versioned; corpus data is private.
+data/*
+!data/manifests/
+!data/manifests/**
 .research/
 models/
 .model-audit/

@@ -1,0 +1,22 @@
+{
+  "dataset": "IndicVoices-R",
+  "officialRepository": "https://github.com/AI4Bharat/IndicVoices-R",
+  "repositoryRevision": "4d77d8a402b680fb739c1a6a3ec531de0cf17139",
+  "revisionDate": "2024-12-11T09:56:06Z",
+  "datasetRecord": "https://zenodo.org/records/11636050",
+  "license": "CC-BY-4.0",
+  "licenseFile": "https://github.com/AI4Bharat/IndicVoices-R/blob/4d77d8a402b680fb739c1a6a3ec531de0cf17139/LICENSE.md",
+  "sourceIndex": "https://github.com/AI4Bharat/IndicVoices-R/blob/4d77d8a402b680fb739c1a6a3ec531de0cf17139/data_links.txt",
+  "archiveAccessResult": "OFFICIAL_URLS_RETURNED_403_DURING_PHASE_2F_METADATA_AUDIT",
+  "slices": [
+    {"language": "hi", "name": "Hindi", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Hindi.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "gu", "name": "Gujarati", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Gujarati.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "mr", "name": "Marathi", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Marathi.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "kn", "name": "Kannada", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Kannada.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "ml", "name": "Malayalam", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Malayalam.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "ta", "name": "Tamil", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Tamil.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "te", "name": "Telugu", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Telugu.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "or", "name": "Odia", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Odia.tar.gz", "checksum": "UNKNOWN"},
+    {"language": "bn", "name": "Bengali", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Bengali.tar.gz", "checksum": "UNKNOWN"}
+  ]
+}

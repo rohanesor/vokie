@@ -1,0 +1,16 @@
+{
+  "dataset": "LibriTTS",
+  "officialSource": "https://www.openslr.org/60/",
+  "releaseIdentifier": "OpenSLR SLR60",
+  "license": "CC-BY-4.0",
+  "publishedCorpusFacts": {"hours": 585, "sampleRateHz": 24000},
+  "archives": [
+    "dev-clean.tar.gz", "dev-other.tar.gz", "test-clean.tar.gz", "test-other.tar.gz",
+    "train-clean-100.tar.gz", "train-clean-360.tar.gz", "train-other-500.tar.gz"
+  ],
+  "archiveBase": "https://www.openslr.org/resources/60/",
+  "archiveChecksums": "UNKNOWN",
+  "speakerCount": "UNKNOWN",
+  "utteranceCount": "UNKNOWN",
+  "manifestAccess": "COMPLETE_ARCHIVES_NOT_DOWNLOADED_IN_PHASE_2F"
+}
