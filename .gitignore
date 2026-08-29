@@ -9,6 +9,7 @@ app/.cxx/
 .DS_Store
 
 # Local speech models and private archive workspaces are never committed
+.research/
 models/
 .model-audit/
 .quantization-candidates/
