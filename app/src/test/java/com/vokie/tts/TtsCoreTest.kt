@@ -21,6 +21,20 @@ class TtsCoreTest {
         assertEquals(10, TtsLanguage.entries.size)
     }
 
+    @Test fun languageRouterNeverSubstitutesAnUnavailableLanguage() {
+        val router = LanguageRouter(emptyProductionRegistry())
+        try { router.resolve("TA"); fail("Unavailable route must fail explicitly") }
+        catch (error: TtsException) { assertEquals(TtsErrorCode.UNSUPPORTED_LANGUAGE, error.code) }
+    }
+
+    @Test fun registryLabelsOnlyExplicitRoutes() {
+        val route = TtsRoute(TtsLanguage.ENGLISH, "test-backend", TtsAvailability.MOCK_TEST_ONLY)
+        val registry = TtsModelRegistry(mapOf(TtsLanguage.ENGLISH to route))
+        assertEquals(route, registry.route("EN"))
+        assertNull(registry.route("HI"))
+        assertEquals(TtsAvailability.MOCK_TEST_ONLY, route.availability)
+    }
+
     @Test fun stateMachineRequiresInitializationAndRealSynthesisOrder() {
         val machine = TtsStateMachine()
         machine.moveTo(TtsState.MODEL_MISSING)

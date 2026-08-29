@@ -32,7 +32,7 @@ class VokieApplication : Application() {
     lateinit var sttEngine: WhisperSttEngine; private set
     lateinit var sttLanguagePreferences: SttLanguagePreferences; private set
     lateinit var speechToText: SpeechToTextUseCase; private set
-    lateinit var ttsEngine: SherpaOnnxTtsEngine; private set
+    lateinit var ttsEngine: TtsEngine; private set
     lateinit var modelDownloads: ModelDownloadManager; private set
     lateinit var textToSpeech: TextToSpeechUseCase; private set
     lateinit var offlineMap: OfflineMapUseCase; private set
@@ -57,7 +57,9 @@ class VokieApplication : Application() {
         modelDownloads = ModelDownloadManager(applicationContext, bundledModels)
         val ttsPreferences = TtsPreferences(applicationContext)
         val ttsSpeed = ttsPreferences.speed.stateIn(applicationScope, SharingStarted.Eagerly, DEFAULT_TTS_SPEED)
-        ttsEngine = SherpaOnnxTtsEngine(ttsModels, VokieAudioPlayer(applicationContext))
+        // No legally approved multilingual TTS artifact is installed. Keep the production route
+        // explicit and fail with UNSUPPORTED_LANGUAGE rather than silently using MMS.
+        ttsEngine = UnavailableTtsEngine()
         val ttsQueue = TtsPlaybackQueue(ttsEngine, ttsSpeed, applicationScope)
         textToSpeech = TextToSpeechUseCase(ttsEngine, ttsModels, ttsPreferences, ttsQueue).also { it.start() }
         applicationScope.launch {
@@ -67,7 +69,7 @@ class VokieApplication : Application() {
                 .onSuccess {
                     ttsModels.refresh()
                     speechToText.initialize()
-                    ttsEngine.initialize(TtsLanguage.ENGLISH)
+                    // TTS initialization is intentionally skipped until an approved bundled artifact exists.
                 }
         }
         communicationPreferences = CommunicationPreferences(applicationContext)
