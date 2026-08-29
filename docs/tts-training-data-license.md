@@ -15,7 +15,7 @@ A model trained solely from licensed data may be distributable only after review
 
 ## Result
 
-- **IndicVoices-R:** Conditional candidate. The official source explicitly provides CC-BY-4.0 license text, but the target slices and their manifests could not be acquired during this pass: every official object-store slice URL returned HTTP 403 and no archive checksum was published in the official repository index.
+- **IndicVoices-R:** Conditional candidate. The official source explicitly provides CC-BY-4.0 license text. Zenodo version record `14016558` supplies a CC-BY-4.0 repository snapshot only, not data. Every documented target object URL returned HTTP 403 AccessDenied, and neither the repository nor Zenodo release provides per-language archive checksums/manifests.
 - **LibriTTS:** Conditional candidate. OpenSLR explicitly declares CC-BY-4.0 and 585-hour/24-kHz corpus facts, but fine-grained archive manifest/checksum/speaker metadata was not acquired without downloading archives.
 - **Commercial trained-model distribution:** **BLOCKED pending legal/data-card review and exact artifact acquisition.** This is not a conclusion that CC-BY forbids training or shipment; it is a refusal to claim downstream legal certainty without the complete evidence chain.
 

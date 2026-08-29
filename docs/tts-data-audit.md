@@ -4,7 +4,7 @@
 
 | Dataset | Exact version/release evidence | Acquisition performed | Result |
 |---|---|---|---|
-| IndicVoices-R | GitHub revision `4d77d8a402b680fb739c1a6a3ec531de0cf17139`, dated 2024-12-11; Zenodo record `11636050` | official repository tree, README, license, `data_links.txt`, and HTTP metadata request for each required official slice | Source index acquired; all nine official archive URLs returned HTTP 403; no per-record manifest/checksum available separately |
+| IndicVoices-R | GitHub revision `4d77d8a402b680fb739c1a6a3ec531de0cf17139`, dated 2024-12-11; Zenodo concept record `11636050`, version record `14016558` | repository tree/README/license/index, Zenodo API and official `v1.0.2` ZIP, and one ordinary request per required official slice | Zenodo supplies only a 310,314-byte repository snapshot (official MD5 recorded); all nine audio URLs return HTTP 403 AccessDenied; no per-record manifest/checksum available separately |
 | LibriTTS | OpenSLR SLR60 | official landing page/archive index only; no corpus archive downloaded | Source index acquired; detailed manifests/checksums unavailable without archive acquisition |
 
 ## Required-language statistics
@@ -30,4 +30,4 @@ No source audio or official per-record manifest was downloaded, as required by t
 
 ## Dataset training gate
 
-**BLOCKED.** The required language slices are named in the official IndicVoices-R index, but reproducible archive integrity and per-language corpus statistics are unavailable. Training must not start until official access succeeds and private manifest/audio audits produce the required evidence.
+**USER ACTION REQUIRED.** The required language slices are named in the official IndicVoices-R index, but reproducible archive integrity and per-language corpus statistics are unavailable because the provider's documented URLs return AccessDenied and publishes no access process. Training must not start until the official provider supplies public access, a documented approved authentication process, or a manifest/checksum/data-card bundle.

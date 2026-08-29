@@ -2,7 +2,7 @@
 
 ## Current result
 
-No per-record manifests were available in Phase 2F, so hours/language, utterances/language, speakers/language, gender distribution, hours/speaker, average/median duration, dominant speakers, and single-speaker risks are all **UNKNOWN**. The aggregate IndicVoices-R total cannot establish balance for any target language.
+No per-record manifests were available in Phase 2F or 2G. Phase 2G verified that the official Zenodo artifact is a repository snapshot only and that documented per-language audio URLs return HTTP 403 AccessDenied. Therefore hours/language, utterances/language, speakers/language, gender distribution, hours/speaker, average/median duration, dominant speakers, and single-speaker risks are all **UNKNOWN**. The aggregate IndicVoices-R total cannot establish balance for any target language.
 
 ## Required calculation
 

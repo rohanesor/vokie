@@ -3,11 +3,21 @@
   "officialRepository": "https://github.com/AI4Bharat/IndicVoices-R",
   "repositoryRevision": "4d77d8a402b680fb739c1a6a3ec531de0cf17139",
   "revisionDate": "2024-12-11T09:56:06Z",
-  "datasetRecord": "https://zenodo.org/records/11636050",
+  "datasetConceptRecord": "https://zenodo.org/records/11636050",
+  "zenodoVersionRecord": "https://zenodo.org/records/14016558",
+  "zenodoRelease": {
+    "version": "v1.0.2",
+    "file": "AI4Bharat/IndicVoices-R-v1.0.2.zip",
+    "sizeBytes": 310314,
+    "officialMd5": "92977e31e17f6728c8ed8c625c698be2",
+    "localVerifiedSha256": "835d1ab9940449a795a78ca949099dff9d41c0183ace35431151416cf1168798",
+    "contents": "repository snapshot and download instructions only; no audio or per-language manifests"
+  },
   "license": "CC-BY-4.0",
   "licenseFile": "https://github.com/AI4Bharat/IndicVoices-R/blob/4d77d8a402b680fb739c1a6a3ec531de0cf17139/LICENSE.md",
   "sourceIndex": "https://github.com/AI4Bharat/IndicVoices-R/blob/4d77d8a402b680fb739c1a6a3ec531de0cf17139/data_links.txt",
-  "archiveAccessResult": "OFFICIAL_URLS_RETURNED_403_DURING_PHASE_2F_METADATA_AUDIT",
+  "archiveAccessResult": "Each required official object URL returned HTTP 403 AccessDenied during Phase 2G; no authentication or registration instruction is published in the pinned README or Zenodo record.",
+  "archiveChecksumStatus": "No official per-language archive checksum or size is published in the repository or Zenodo release.",
   "slices": [
     {"language": "hi", "name": "Hindi", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Hindi.tar.gz", "checksum": "UNKNOWN"},
     {"language": "gu", "name": "Gujarati", "archive": "https://indic-tts-public.objectstore.e2enetworks.net/data/ivr/Gujarati.tar.gz", "checksum": "UNKNOWN"},
