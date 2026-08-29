@@ -2,7 +2,9 @@
 
 ## Training gate: BLOCKED
 
-IndicVoices-R and LibriTTS are promising official CC-BY-4.0 sources, but this is not a training pass. Per-language manifests, archive checksums, source accessibility, corpus statistics, audio/transcript quality, vocabulary coverage, and complete derivative-model legal review remain unresolved.
+IndicVoices-R and LibriTTS are promising official CC-BY-4.0 sources, but this is not a training pass. Phase 2K defines a bounded acquisition plan only; no audio has been acquired. Per-language manifests, archive checksums, source accessibility, corpus statistics, audio/transcript quality, vocabulary coverage, speaker-disjoint split evidence, and complete derivative-model legal review remain unresolved.
+
+The recommended planning target is 25 hours per language for nine Indic languages plus English, with a 10-hour fallback. Gujarati's verified usable hours and speakers must cap the final target; no duration is assumed from utterance counts.
 
 ## Provisional common sample-rate decision
 
@@ -24,6 +26,15 @@ IndicVoices-R and LibriTTS are promising official CC-BY-4.0 sources, but this is
 | GPU VRAM / GPU count | UNKNOWN / REQUIRES PROTOTYPE |
 | Training duration | UNKNOWN / REQUIRES PROTOTYPE |
 | Student size, Android RAM, RTF, quality | UNKNOWN / REQUIRES PROTOTYPE |
+
+## Controlled acquisition sequence
+
+1. Obtain legal/product approval for the bounded acquisition and downstream derivative-model review.
+2. Obtain official immutable source manifest/checksums and approved HF access instructions.
+3. Acquire only approved language/split/row or shard selections within the configured budget; never download the 427 GB corpus.
+4. Produce private manifests, run deterministic audio/transcript/quality audits, and record rejection reasons.
+5. Freeze speaker-disjoint train/validation/test splits and recompute exact language, duration, speaker, quality, scenario, task, regional, and emergency-vocabulary reports.
+6. Stop if Gujarati cannot support the configured target or if provenance/consent/legal evidence is incomplete.
 
 ## Required pre-training sequence
 
