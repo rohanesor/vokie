@@ -27,6 +27,7 @@ class VokieApplication : Application() {
     lateinit var database: VokieDatabase; private set
     lateinit var messageRepository: RoomMessageRepository; private set
     lateinit var bluetoothTransport: BluetoothTransport; private set
+    lateinit var wifiDirectTransport: WifiDirectTransport; private set
     lateinit var transportManager: TransportManager; private set
     lateinit var outboundProcessor: OutboundMessageProcessor; private set
     lateinit var sttEngine: WhisperSttEngine; private set
@@ -47,7 +48,8 @@ class VokieApplication : Application() {
         database = VokieDatabase.get(this)
         messageRepository = RoomMessageRepository(database.messages())
         bluetoothTransport = BluetoothTransport(applicationContext, applicationScope)
-        transportManager = TransportManager(bluetoothTransport)
+        wifiDirectTransport = WifiDirectTransport(applicationContext, applicationScope)
+        transportManager = TransportManager(bluetoothTransport, wifiDirectTransport)
         outboundProcessor = OutboundMessageProcessor(messageRepository, transportManager, database.transportEvents(), applicationScope)
         sttEngine = WhisperSttEngine(applicationContext)
         sttLanguagePreferences = SttLanguagePreferences(applicationContext)
@@ -78,6 +80,16 @@ class VokieApplication : Application() {
         offlineMap = OfflineMapUseCase(applicationContext, mapManager, mapPreferences)
         applicationScope.launch { offlineMap.refresh() }
 
+        applicationScope.launch {
+            transportManager.incomingPackets().collect { bytes ->
+                runCatching { PacketV2.decode(bytes) }.getOrNull()?.let { frame ->
+                    if (frame is PacketV2.Decoded.MessagePacket) {
+                        // Full Room-backed replay/ACK routing remains a hardening task; never play partial data.
+                        VokieLog.msg("Wi-Fi Direct packet received: ${frame.packet.messageId}")
+                    }
+                }
+            }
+        }
         applicationScope.launch {
             transportManager.incomingMessages().collect { message ->
                 try {
