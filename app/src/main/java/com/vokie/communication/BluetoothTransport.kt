@@ -46,6 +46,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     private var receiverRegistered = false
     private val received = MutableSharedFlow<Message>(extraBufferCapacity = 32)
     private val ackTracker = AckTracker()
+    private val reassembler = PacketReassembler()
 
     private val discoveryReceiver = object : BroadcastReceiver() {
         @SuppressLint("MissingPermission")
@@ -148,8 +149,8 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
         val stream = output ?: return@withContext SendResult(message.id, false, error = "No connected iTantra device")
         val waiter = ackTracker.register(message.id)
         try {
-            val frame = VokieProtocol.encode(message)
-            synchronized(stream) { stream.writeInt(frame.size); stream.write(frame); stream.flush() }
+            val frames = PacketV2.fromMessage(message)
+            synchronized(stream) { frames.forEach { frame -> stream.writeInt(frame.size); stream.write(frame) }; stream.flush() }
             VokieLog.msg("Transmission started: ${message.id}")
             val started = android.os.SystemClock.elapsedRealtime()
             val ack = withTimeout(8.seconds) { waiter.await() }
@@ -172,9 +173,9 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                     val size = input?.readInt() ?: break
                     if (size <= 0 || size > 64 * 1024) throw IOException("Invalid iTantra frame size")
                     val bytes = ByteArray(size); input!!.readFully(bytes)
-                    when (val frame = VokieProtocol.decode(bytes)) {
-                        is VokieProtocol.DecodedFrame.Ack -> if (!ackTracker.acknowledge(frame.messageId)) VokieLog.msg("Unknown ACK ignored: ${frame.messageId}")
-                        is VokieProtocol.DecodedFrame.MessageFrame -> received.emit(frame.message)
+                    when (val frame = PacketV2.decode(bytes)) {
+                        is PacketV2.Decoded.Ack -> if (!ackTracker.acknowledge(frame.messageId)) VokieLog.msg("Unknown ACK ignored: ${frame.messageId}")
+                        is PacketV2.Decoded.MessagePacket -> reassembler.add(frame)?.let { received.emit(it) }
                     }
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {

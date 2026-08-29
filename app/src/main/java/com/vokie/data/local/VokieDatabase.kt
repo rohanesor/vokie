@@ -21,16 +21,26 @@ interface MessageDao {
 @Dao interface PeerDao { @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(peer: PeerEntity); @Query("SELECT * FROM peers ORDER BY lastSeen DESC") fun observeAll(): Flow<List<PeerEntity>> }
 @Dao interface TransportEventDao { @Insert suspend fun insert(event: TransportEventEntity); @Query("SELECT * FROM transport_events ORDER BY timestamp DESC LIMIT :limit") fun observeRecent(limit: Int = 100): Flow<List<TransportEventEntity>> }
 
-@Database(entities = [MessageEntity::class, PeerEntity::class, TransportEventEntity::class, EmergencyAlertEntity::class, AppSettingsEntity::class], version = 1, exportSchema = true)
+@Database(entities = [MessageEntity::class, PeerEntity::class, TransportEventEntity::class, EmergencyAlertEntity::class, AppSettingsEntity::class], version = 2, exportSchema = true)
 abstract class VokieDatabase : RoomDatabase() {
     abstract fun messages(): MessageDao
     abstract fun peers(): PeerDao
     abstract fun transportEvents(): TransportEventDao
 
     companion object {
+        val MIGRATION_1_2 = object : androidx.room.migration.Migration(1, 2) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE messages ADD COLUMN sequenceNumber INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE messages ADD COLUMN ttlMs INTEGER NOT NULL DEFAULT 300000")
+                database.execSQL("ALTER TABLE messages ADD COLUMN priority INTEGER NOT NULL DEFAULT 0")
+                database.execSQL("ALTER TABLE messages ADD COLUMN checksum INTEGER NOT NULL DEFAULT 0")
+            }
+        }
         @Volatile private var instance: VokieDatabase? = null
         fun get(context: android.content.Context): VokieDatabase = instance ?: synchronized(this) {
-            instance ?: Room.databaseBuilder(context.applicationContext, VokieDatabase::class.java, "vokie.db").build().also { instance = it }
+            instance ?: Room.databaseBuilder(context.applicationContext, VokieDatabase::class.java, "vokie.db")
+                .addMigrations(MIGRATION_1_2)
+                .build().also { instance = it }
         }
     }
 }

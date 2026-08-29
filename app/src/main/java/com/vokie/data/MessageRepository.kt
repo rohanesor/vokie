@@ -51,5 +51,5 @@ class RoomMessageRepository(private val dao: MessageDao) : MessageRepository {
 
 object VokieMessageId { fun generate(): String = java.util.UUID.randomUUID().toString() }
 
-fun Message.toEntity() = MessageEntity(id, senderId, receiverId, timestamp, text, language, messageType.name, deliveryState.name, transport?.name, hopCount, retryCount, requiresAck, lastError)
-fun MessageEntity.toDomain() = Message(id, senderId, timestamp, text, language, MessageType.valueOf(messageType), DeliveryState.valueOf(deliveryState), transport?.let(TransportType::valueOf), hopCount, receiverId, retryCount, requiresAck, lastError)
+fun Message.toEntity() = MessageEntity(id, senderId, receiverId, timestamp, text, language, messageType.name, deliveryState.name, transport?.name, hopCount, retryCount, requiresAck, lastError, sequenceNumber, ttlMs, priority, checksum)
+fun MessageEntity.toDomain() = Message(id, senderId, timestamp, text, language, MessageType.valueOf(messageType), DeliveryState.valueOf(deliveryState), transport?.let(TransportType::valueOf), hopCount, receiverId, retryCount, requiresAck, lastError, sequenceNumber, ttlMs, priority, checksum)

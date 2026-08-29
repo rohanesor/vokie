@@ -18,6 +18,10 @@ data class MessageEntity(
     val retryCount: Int,
     val requiresAck: Boolean,
     val lastError: String?,
+    val sequenceNumber: Long = 0,
+    val ttlMs: Long = 300000,
+    val priority: Int = 0,
+    val checksum: Long = 0,
 )
 
 @Entity(tableName = "peers")

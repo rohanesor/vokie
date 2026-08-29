@@ -2,11 +2,11 @@
 
 ## Current status
 
-The existing transport-independent `VokieProtocol` is retained as the current text framing implementation. It validates magic, version, language, IDs, payload size, and ACK frames. Bluetooth uses length-prefixed protocol frames, so packet bytes are independent of the underlying stream.
+Packet v2 is now implemented in `PacketV2.kt`. The compatibility facade `VokieProtocol` preserves existing callers while emitting version-2 deterministic binary frames. It validates magic, version, language, IDs, payload size, TTL, CRC, and ACK frames. Bluetooth uses length-prefixed protocol frames, so packet bytes are independent of the underlying stream.
 
-## Required Packet v2 work
+## Remaining Packet v2 work
 
-Before production approval, add and test explicit fields for message ID, sequence number, language code, payload length, payload, CRC, fragmentation, ordering, duplicate/replay protection, TTL, ACK, and retry state. These changes require a protocol-versioned migration and interoperability tests; they are not silently claimed by the current v1 implementation.
+Packet v2 now includes message ID, sequence number, language code, payload length, payload, CRC32, fragmentation, reassembly, TTL, priority, and ACK framing. Persistent replay inbox state and complete transport interoperability still require device validation and a Room inbox migration.
 
 The packet must remain transport-independent:
 

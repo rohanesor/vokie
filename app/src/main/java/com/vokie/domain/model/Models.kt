@@ -28,6 +28,10 @@ data class Message(
     val retryCount: Int = 0,
     val requiresAck: Boolean = true,
     val lastError: String? = null,
+    val sequenceNumber: Long = 0,
+    val ttlMs: Long = 5 * 60 * 1_000L,
+    val priority: Int = 0,
+    val checksum: Long = 0,
 )
 
 data class Peer(val id: String, val name: String, val address: String, val bonded: Boolean, val rssi: Int? = null)
