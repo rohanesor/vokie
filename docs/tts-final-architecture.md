@@ -2,6 +2,8 @@
 
 ## Classification: BLOCKED
 
+Phase 2N legal decision: IndicVoices-R is **TECHNICALLY ACCESSIBLE BUT LEGALLY BLOCKED**. No alternative corpus combination has sufficient verified rights for all ten required languages and trained-weight/APK distribution. See `docs/tts-legal-decision.md`, `docs/tts-alternative-corpus-landscape.md`, and `docs/tts-final-training-options.md`. No corpus is hard-coded into the runtime.
+
 The product abstraction is locked and remains model-neutral:
 
 ```text
@@ -30,7 +32,9 @@ A final `TtsModelRegistry` cannot be implemented honestly yet because there is n
 
 ## Final architecture
 
-**No concrete production TTS model architecture is selected.** The recommended deliverable remains the locked hybrid-capable abstraction, not an unverified MMS, Piper, Kokoro, or AI4Bharat deployment.
+**No concrete production TTS model architecture is selected.** The recommended deliverable remains the locked hybrid-capable abstraction, not an unverified MMS, Piper, Kokoro, or AI4Bharat deployment. The research training direction remains a shared acoustic student with language-specific frontends/adapters, but it cannot proceed until the corpus/legal gate passes.
+
+Current training decision: **D — no legally clean training corpus; stop training and retain existing candidates as benchmarks only.** This is not authorization to ship MMS or any other candidate.
 
 ## Conditions to leave BLOCKED
 
