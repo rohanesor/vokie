@@ -10,9 +10,11 @@ class SpeechToTextUseCase(
 ) {
     val status: StateFlow<SttStatus> = engine.status
     val selectedLanguage: Flow<SttLanguage> = languagePreferences.selectedLanguage
+    val recognitionMode: Flow<SttRecognitionMode> = languagePreferences.recognitionMode
 
     suspend fun initialize() = engine.initialize()
     suspend fun selectLanguage(language: SttLanguage) = languagePreferences.select(language)
-    suspend fun start(language: SttLanguage) = engine.start(language)
+    suspend fun usePreferredLanguage() = languagePreferences.usePreferredLanguage()
+    suspend fun start(language: SttLanguage, preferredLanguage: UserLanguageProfile, finalizeOnVad: Boolean = true) = engine.start(language, preferredLanguage, finalizeOnVad)
     suspend fun stop() = engine.stop()
 }

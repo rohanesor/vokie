@@ -3,12 +3,16 @@ package com.vokie.ui.communication
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.vokie.BuildConfig
 import com.vokie.VokieApplication
 import com.vokie.communication.CommunicationPreferences
 import com.vokie.domain.model.*
 import com.vokie.models.DownloadState
 import com.vokie.stt.SttLanguage
 import com.vokie.stt.SttStatus
+import com.vokie.stt.SttRecognitionMode
+import com.vokie.stt.UserLanguageProfile
+import com.vokie.stt.resolveProductionSttLanguage
 import com.vokie.tts.*
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -32,6 +36,13 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     val sttStatus: StateFlow<SttStatus> = speechToText.status
     val selectedSttLanguage: StateFlow<SttLanguage> = speechToText.selectedLanguage
         .stateIn(viewModelScope, SharingStarted.Eagerly, SttLanguage.AUTO)
+    val recognitionMode: StateFlow<SttRecognitionMode> = speechToText.recognitionMode
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SttRecognitionMode.PREFERRED_LANGUAGE)
+    val preferredLanguage: StateFlow<UserLanguageProfile?> = app.userLanguageProfilePreferences.profile
+        .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+    private val _debugFastSttEnabled = MutableStateFlow(false)
+    /** Debug-only product experiment; Release always uses the selected STT mode. */
+    val debugFastSttEnabled: StateFlow<Boolean> = _debugFastSttEnabled.asStateFlow()
     val ttsStatus: StateFlow<TtsStatus> = textToSpeech.status
     val messageTtsStates: StateFlow<Map<String, MessageTtsState>> = textToSpeech.messageStates
     val installedTtsLanguages: StateFlow<Set<TtsLanguage>> = textToSpeech.installedLanguages
@@ -48,7 +59,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
 
     fun send(text: String, language: VokieLanguage? = null, type: MessageType = MessageType.TEXT, onQueued: () -> Unit = {}) {
         if (text.isBlank()) { _error.value = "Enter a message before sending."; return }
-        val resolvedLanguage = language ?: sttStatus.value.result?.detectedLanguage?.messageLanguage
+        val resolvedLanguage = language ?: sttStatus.value.result?.language?.messageLanguage
             ?: if (type == MessageType.SOS) VokieLanguage.EN else null
         if (resolvedLanguage == null) { _error.value = "Speak first so iTantra can detect the message language."; return }
         viewModelScope.launch {
@@ -59,9 +70,28 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     }
 
     fun selectSttLanguage(language: SttLanguage) = action { speechToText.selectLanguage(language) }
+    fun selectPreferredLanguage(language: UserLanguageProfile) = action {
+        app.userLanguageProfilePreferences.select(language)
+        speechToText.usePreferredLanguage()
+    }
     fun initializeStt() = action { speechToText.initialize() }
-    fun startVoice() = action { speechToText.start(SttLanguage.AUTO) }
+    fun setDebugFastStt(enabled: Boolean) {
+        if (BuildConfig.DEBUG) _debugFastSttEnabled.value = enabled
+    }
+    private fun requestedSttLanguage(preferred: UserLanguageProfile): SttLanguage = when {
+        BuildConfig.DEBUG && debugFastSttEnabled.value -> preferred.inputSttLanguage
+        else -> resolveProductionSttLanguage(recognitionMode.value, preferred, selectedSttLanguage.value)
+    }
+
+    fun startVoice() = action {
+        val preferred = preferredLanguage.value ?: throw IllegalStateException("Select your preferred language before recording.")
+        speechToText.start(requestedSttLanguage(preferred), preferred, finalizeOnVad = !pushToTalkEnabled.value)
+    }
     fun stopVoice() = action { speechToText.stop() }
+    fun replayLastPcmBenchmark() = action {
+        val preferred = preferredLanguage.value ?: throw IllegalStateException("Select a preferred language before replaying.")
+        app.sttEngine.replayLastCaptureForBenchmark(requestedSttLanguage(preferred), preferred)
+    }
     fun setTtsSpeed(speed: Float) = action { textToSpeech.setSpeed(speed) }
     fun downloadTtsLanguage(language: TtsLanguage) = action {
         app.modelDownloads.download(language)

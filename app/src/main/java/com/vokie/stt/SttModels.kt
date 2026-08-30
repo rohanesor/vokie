@@ -73,6 +73,29 @@ fun mapSttFailure(error: Throwable, fallback: SttErrorCode, message: String): St
     else -> SttFailure(fallback, message, error)
 }
 
+enum class LanguageSelectionSource { AUTO_DETECTED, PREFERRED_FALLBACK, EXPLICIT_SELECTED }
+
+data class LanguageResolution(
+    val language: SttLanguage,
+    val detectedLanguage: SttLanguage?,
+    val source: LanguageSelectionSource,
+)
+
+fun resolveProductionSttLanguage(mode: SttRecognitionMode, preferred: UserLanguageProfile, selected: SttLanguage): SttLanguage = when (mode) {
+    SttRecognitionMode.PREFERRED_LANGUAGE -> preferred.inputSttLanguage
+    SttRecognitionMode.AUTO_DETECT -> SttLanguage.AUTO
+    SttRecognitionMode.EXPLICIT_LANGUAGE -> selected
+}
+
+fun resolveSttLanguage(requested: SttLanguage, detectedWhisperCode: String?, preferred: UserLanguageProfile): LanguageResolution = when {
+    requested != SttLanguage.AUTO -> LanguageResolution(requested, null, LanguageSelectionSource.EXPLICIT_SELECTED)
+    SttLanguage.fromWhisperCode(detectedWhisperCode.orEmpty())?.let { it != SttLanguage.AUTO } == true -> {
+        val detected = requireNotNull(SttLanguage.fromWhisperCode(detectedWhisperCode.orEmpty()))
+        LanguageResolution(detected, detected, LanguageSelectionSource.AUTO_DETECTED)
+    }
+    else -> LanguageResolution(preferred.inputSttLanguage, null, LanguageSelectionSource.PREFERRED_FALLBACK)
+}
+
 data class SttResult(
     val text: String,
     val language: SttLanguage,
@@ -82,6 +105,7 @@ data class SttResult(
     val timestamp: Long,
     val detectedLanguage: SttLanguage? = language,
     val requestedLanguage: SttLanguage? = language,
+    val languageSource: LanguageSelectionSource = LanguageSelectionSource.AUTO_DETECTED,
 ) {
     val realTimeFactor: Double? get() = calculateRealTimeFactor(processingTimeMs, audioDurationMs)
 }
@@ -106,7 +130,7 @@ fun calculateRealTimeFactor(processingTimeMs: Long, audioDurationMs: Long): Doub
 interface SttEngine {
     val status: StateFlow<SttStatus>
     suspend fun initialize()
-    suspend fun start(language: SttLanguage)
+    suspend fun start(language: SttLanguage, preferredLanguage: UserLanguageProfile, finalizeOnVad: Boolean = true)
     suspend fun stop()
     suspend fun transcribe(audio: FloatArray, language: SttLanguage, audioDurationMs: Long): SttResult
     fun release()
