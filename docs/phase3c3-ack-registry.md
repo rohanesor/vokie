@@ -1,7 +1,9 @@
 # ACK registry
 
-## Status: BLOCKED
+## Status: IMPLEMENTED IN CODE / INTEGRATION PARTIAL
 
-Bluetooth retains its existing ACK tracker. A single manager-owned pending registry keyed by `messageId + sequenceNumber`, with transport ownership, timeout, disconnect cancellation, and both Wi-Fi/Bluetooth correlation, is not implemented.
+`PendingAckRegistry` is manager-owned and keyed by `messageId + sequenceNumber`. It records the originating `PacketTransport`, creation/deadline, completion, timeout cleanup, cancellation, and transport cleanup. `TransportManager` decodes incoming ACK packets and resolves matching entries.
+
+Full Room ACK state transitions and physical transport validation remain outstanding.
 
 Bytes written to a socket are not treated as acknowledgement. ACK remains receipt-only, not PLAYED or HEARD.

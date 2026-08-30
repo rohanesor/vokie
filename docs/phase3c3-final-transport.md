@@ -4,4 +4,4 @@
 
 Raw Bluetooth and Wi-Fi packet adapters now feed `TransportManager`; the application inbound stream uses `InboundPacketCoordinator`; Room has a replay table. Outbound selection is centralized through `TransportManager.sendMessage`.
 
-The completion gate is not met: there is still one compatibility `Transport.send(Message)` call inside the manager, no manager-owned ACK registry for both transports, and no persistent retry/TTL worker. No claim of production-complete reliability is made.
+The completion gate is not met: the legacy compatibility send remains unreachable from the queue only after manager fallback, and persistent retry/TTL workers, complete Room ACK transitions, and UI/device gates remain. A manager-owned ACK registry now exists, but integration is incomplete. No claim of production-complete reliability is made.
