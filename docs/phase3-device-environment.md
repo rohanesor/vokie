@@ -19,6 +19,7 @@
 | Application ID | `com.vokie` |
 | Version | 1.0.0 / versionCode 1 |
 | Microphone | RECORD_AUDIO granted=true |
+| Current APK launch | PASS |
 
 ## Device B — virtual
 
@@ -35,7 +36,9 @@
 | Display/density | 1344x2992 / 480 dpi |
 | Application ID | `com.vokie` |
 | Version | 1.0.0 / versionCode 1 |
-| Microphone | RECORD_AUDIO granted=false; manual permission acceptance remains required |
+| Microphone | RECORD_AUDIO granted=false; manual permission acceptance is still required |
+| Current APK install | PASS |
+| Current APK launch | FAIL — native ABI loading crash |
 
 The AVD is named Pixel 10 Pro XL, but the runtime property reports the generic emulator model `sdk_gphone16k_x86_64`; both values are recorded rather than conflated.
 
@@ -52,56 +55,61 @@ The AVD is named Pixel 10 Pro XL, but the runtime property reports the generic e
 | Windows Gradle tests | PASS | wrapper JAR + Windows Java, `BUILD SUCCESSFUL` |
 | Windows debug build | PASS | `assembleDebug --no-daemon`, `BUILD SUCCESSFUL` |
 | APK | PASS | `D:\vibe\vokie\app\build\outputs\apk\debug\app-debug.apk`, 198,787,226 bytes |
-| APK install A | PASS | `adb -s MJPVXCSG9HYL65YL install -r`, `Success` |
-| APK install B | PASS | `adb -s emulator-5554 install -r`, `Success` |
-| App launch A | PASS | MainActivity focused/displayed |
-| App launch B | PASS | MainActivity started/displayed; no crash observed |
+| APK install A | PASS | `adb install -r`, `Success` |
+| APK install B | PASS | `adb install -r`, `Success` |
+| App launch A | PASS | `MainActivity` displayed; no app crash observed |
+| App launch B | FAIL | process crashed while loading `libvokie_whisper.so` |
 | Logcat A | PASS | package-filtered logs captured |
-| Logcat B | PASS | package-filtered logs captured |
+| Logcat B | PASS | crash captured and diagnosed |
 | Microphone A | PASS | permission already granted |
-| Microphone B | PARTIAL | permission is false; manual Android permission acceptance is required |
+| Microphone B | PARTIAL | permission is false; manual acceptance not performed |
 
-## ADB result
+## Device B launch blocker
+
+The current Gradle configuration packages only `arm64-v8a` native libraries. Device B is `x86_64`. Logcat reports:
 
 ```text
-List of devices attached
-MJPVXCSG9HYL65YL       device product:RMX3782 model:RMX3782
-emulator-5554          device product:sdk_gphone16k_x86_64 model:sdk_gphone16k_x86_64
+java.lang.UnsatisfiedLinkError: dlopen failed:
+libvokie_whisper.so ... lib/arm64-v8a ...
+program alignment (4096) cannot be smaller than system page size (16384)
 ```
+
+The emulator is therefore not a valid current runtime endpoint for this APK. This is an ABI/package compatibility limitation, not a transport result. No product code was changed to work around it.
+
+The realme arm64-v8a endpoint launches the current APK successfully.
 
 ## Transport classification
 
 | Capability | Result |
 |---|---|
 | Two-endpoint ADB | PASS |
-| Two-endpoint software testing | READY |
+| Two-endpoint software testing | PARTIAL — emulator APK launch fails on native ABI |
 | Physical phone-to-phone testing | BLOCKED — Device B is virtual |
 | Wi-Fi Direct physical validation | BLOCKED |
 | Bluetooth Classic RFCOMM physical validation | BLOCKED |
 | Emulator/phone Wi-Fi Direct equivalence | NOT CLAIMED |
 | Emulator/phone Bluetooth Classic equivalence | NOT CLAIMED |
-| Offline physical transfer | NOT MEASURED |
+| Internet-off local transfer | NOT MEASURED |
 
-The emulator is suitable for APK, protocol, Room, lifecycle, and software-level testing only. Its presence does not prove genuine Wi-Fi Direct or Bluetooth Classic behavior with the physical handset.
+The emulator is suitable for ADB/install/protocol-only testing only after an x86_64-compatible debug native build exists. Its presence does not prove genuine Wi-Fi Direct or Bluetooth Classic behavior with the physical handset.
 
 ## Final classification
 
 ```text
 DEVICE A = READY
-DEVICE B = READY FOR SOFTWARE TESTING
+DEVICE B = ADB READY, APP RUNTIME BLOCKED BY ARM64-ONLY APK
 TWO-ENDPOINT_ADB = PASS
-TWO-ENDPOINT SOFTWARE TESTING = READY
-PHYSICAL TWO-DEVICE TESTING = BLOCKED
-ADB STATUS = PASS
-WINDOWS BUILD = PASS
+TWO-ENDPOINT SOFTWARE TESTING = PARTIAL
+DEBUG APK BUILD = PASS
 DEBUG APK INSTALL A = PASS
 DEBUG APK INSTALL B = PASS
 APP LAUNCH A = PASS
-APP LAUNCH B = PASS
+APP LAUNCH B = FAIL (native ABI mismatch)
 LOGCAT A = PASS
-LOGCAT B = PASS
+LOGCAT B = PASS / blocker diagnosed
 MICROPHONE A = PASS
-MICROPHONE B = PARTIAL — manual permission acceptance required
+MICROPHONE B = PARTIAL
+PHYSICAL TWO-DEVICE TESTING = BLOCKED
 ```
 
-No source code or product architecture was modified for this setup. No release build, model/dataset download, AWS action, or training was performed.
+No release build, dataset/model download, AWS action, training, or product source-code change was performed for this verification.
