@@ -612,7 +612,7 @@ private fun SttPanel(
                         SttState.INITIALIZING -> "INITIALIZING MODEL"
                         else -> if (microphoneGranted) if (pushToTalk) "HOLD TO SPEAK" else "TAP TO SPEAK" else "MICROPHONE PERMISSION REQUIRED"
                     }, style = VokieTheme.typography.label, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 8.dp))
-                    Text(if (pushToTalk) "Release to transcribe • silence finalizes after 1.2 seconds" else "Tap once to speak • silence finalizes after 1.2 seconds", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center)
+                    Text(if (pushToTalk) "Release to transcribe immediately" else "Tap once to speak • silence finalizes after about 0.75 seconds", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, textAlign = TextAlign.Center)
                 }
             }
             if (!microphoneGranted) {
@@ -623,7 +623,8 @@ private fun SttPanel(
         }
         status.failure?.let { Text(it.userMessage, style = VokieTheme.typography.body, color = VokieTheme.colors.alert, modifier = Modifier.padding(top = 12.dp)) }
         status.result?.let { result ->
-            Text("You said:", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 14.dp))
+            Text("Detected: ${result.detectedLanguage?.nativeName ?: "Unknown language"}", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.accent, modifier = Modifier.padding(top = 14.dp))
+            Text("You said:", style = VokieTheme.typography.labelSmall, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 5.dp))
             Text("“${result.text}”", style = VokieTheme.typography.bodyLarge, color = VokieTheme.colors.textPrimary, modifier = Modifier.padding(top = 5.dp))
             Text("Audio ${result.audioDurationMs} ms • STT ${result.processingTimeMs} ms • RTF ${result.realTimeFactor?.let { String.format(java.util.Locale.US, "%.2f", it) } ?: "unavailable"}", style = VokieTheme.typography.caption, color = VokieTheme.colors.textSecondary, modifier = Modifier.padding(top = 7.dp))
         }
