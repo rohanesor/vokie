@@ -25,6 +25,7 @@ class EnergyVadEngine(private val config: EnergyVadConfig = EnergyVadConfig()) :
     private var calibrationMs = 0L
     private var ambientSquares = 0.0
     private var ambientSamples = 0L
+    private var activeThreshold = 0.025
     override var hasSpeech = false
         private set
 
@@ -35,6 +36,7 @@ class EnergyVadEngine(private val config: EnergyVadConfig = EnergyVadConfig()) :
         calibrationMs = 0
         ambientSquares = 0.0
         ambientSamples = 0
+        activeThreshold = maxOf(config.speechRmsThreshold, 0.025)
     }
 
     override fun process(samples: ShortArray, count: Int): VadDecision {
@@ -53,12 +55,12 @@ class EnergyVadEngine(private val config: EnergyVadConfig = EnergyVadConfig()) :
             calibrationMs += frameMs
             if (rms >= config.speechRmsThreshold) consecutiveSpeechMs += frameMs
             if (calibrationMs < 200) return VadDecision(VadState.WAITING_FOR_SPEECH, false)
+            val ambientRms = if (ambientSamples > 0) sqrt(ambientSquares / ambientSamples) else 0.0
+            activeThreshold = maxOf(config.speechRmsThreshold, ambientRms * config.adaptiveNoiseMultiplier, 0.025)
+            if (consecutiveSpeechMs >= config.minimumSpeechMs) hasSpeech = true
+            if (hasSpeech) return VadDecision(VadState.SPEECH_DETECTED, false)
         }
-        val ambientRms = if (ambientSamples > 0) sqrt(ambientSquares / ambientSamples) else 0.0
-        // If calibration captured the first speech frame, avoid making that frame's
-        // level impossible to exceed; later ambient noise still uses the configured multiplier.
-        val threshold = maxOf(config.speechRmsThreshold, 0.025, minOf(ambientRms * config.adaptiveNoiseMultiplier, rms * 0.9))
-        if (rms >= threshold) {
+        if (rms >= activeThreshold) {
             consecutiveSpeechMs += frameMs
             consecutiveSilenceMs = 0
             if (consecutiveSpeechMs >= config.minimumSpeechMs) hasSpeech = true
