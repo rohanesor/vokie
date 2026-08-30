@@ -12,6 +12,7 @@ enum class SttLanguage(
     val messageLanguage: VokieLanguage,
     val nativeName: String,
 ) {
+    AUTO("auto", VokieLanguage.EN, "Auto Detect"),
     ENGLISH("en", VokieLanguage.EN, "English"),
     HINDI("hi", VokieLanguage.HI, "हिन्दी"),
     GUJARATI("gu", VokieLanguage.GU, "ગુજરાતી"),
@@ -25,7 +26,7 @@ enum class SttLanguage(
 
     companion object {
         fun fromWhisperCode(code: String): SttLanguage? = entries.firstOrNull { it.whisperCode == code.lowercase() }
-        fun fromMessageCode(code: String): SttLanguage? = entries.firstOrNull { it.messageLanguage.code == code.uppercase() }
+        fun fromMessageCode(code: String): SttLanguage? = entries.firstOrNull { it != AUTO && it.messageLanguage.code == code.uppercase() }
     }
 }
 
@@ -79,6 +80,8 @@ data class SttResult(
     val processingTimeMs: Long,
     val audioDurationMs: Long,
     val timestamp: Long,
+    val detectedLanguage: SttLanguage? = language,
+    val requestedLanguage: SttLanguage? = language,
 ) {
     val realTimeFactor: Double? get() = calculateRealTimeFactor(processingTimeMs, audioDurationMs)
 }

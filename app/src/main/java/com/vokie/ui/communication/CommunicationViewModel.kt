@@ -31,7 +31,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     val connectedPeerId = manager.connectedPeerId
     val sttStatus: StateFlow<SttStatus> = speechToText.status
     val selectedSttLanguage: StateFlow<SttLanguage> = speechToText.selectedLanguage
-        .stateIn(viewModelScope, SharingStarted.Eagerly, SttLanguage.ENGLISH)
+        .stateIn(viewModelScope, SharingStarted.Eagerly, SttLanguage.AUTO)
     val ttsStatus: StateFlow<TtsStatus> = textToSpeech.status
     val messageTtsStates: StateFlow<Map<String, MessageTtsState>> = textToSpeech.messageStates
     val installedTtsLanguages: StateFlow<Set<TtsLanguage>> = textToSpeech.installedLanguages
@@ -46,10 +46,13 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun connect(peerId: String) = action { manager.connectBluetooth(peerId) }
     fun disconnect() = action { manager.disconnect() }
 
-    fun send(text: String, language: VokieLanguage = selectedSttLanguage.value.messageLanguage, type: MessageType = MessageType.TEXT, onQueued: () -> Unit = {}) {
+    fun send(text: String, language: VokieLanguage? = null, type: MessageType = MessageType.TEXT, onQueued: () -> Unit = {}) {
         if (text.isBlank()) { _error.value = "Enter a message before sending."; return }
+        val resolvedLanguage = language ?: sttStatus.value.result?.detectedLanguage?.messageLanguage
+            ?: if (type == MessageType.SOS) VokieLanguage.EN else null
+        if (resolvedLanguage == null) { _error.value = "Speak first so iTantra can detect the message language."; return }
         viewModelScope.launch {
-            runCatching { repository.createMessage(text, app.deviceId, connectedPeerId.value, language, type) }
+            runCatching { repository.createMessage(text, app.deviceId, connectedPeerId.value, resolvedLanguage, type) }
                 .onSuccess { _error.value = null; onQueued() }
                 .onFailure { _error.value = it.message ?: "Message could not be queued" }
         }
@@ -57,7 +60,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
 
     fun selectSttLanguage(language: SttLanguage) = action { speechToText.selectLanguage(language) }
     fun initializeStt() = action { speechToText.initialize() }
-    fun startVoice() = action { speechToText.start(selectedSttLanguage.value) }
+    fun startVoice() = action { speechToText.start(SttLanguage.AUTO) }
     fun stopVoice() = action { speechToText.stop() }
     fun setTtsSpeed(speed: Float) = action { textToSpeech.setSpeed(speed) }
     fun downloadTtsLanguage(language: TtsLanguage) = action {

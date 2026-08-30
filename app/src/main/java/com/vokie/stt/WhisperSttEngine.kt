@@ -19,6 +19,7 @@ class WhisperNative {
     init { System.loadLibrary("vokie_whisper") }
     external fun nativeInit(modelPath: String): Long
     external fun nativeTranscribe(context: Long, samples: FloatArray, language: String, threads: Int): String
+    external fun nativeDetectedLanguage(context: Long): String
     external fun nativeAbort()
     external fun nativeFree(context: Long)
 }
@@ -143,7 +144,9 @@ class WhisperSttEngine(
                 }
                 val processingTime = SystemClock.elapsedRealtime() - started
                 if (text.isBlank()) throw SttException(SttErrorCode.NO_SPEECH, "No speech was recognized. Try speaking more clearly.")
-                SttResult(text, language, confidence = null, processingTimeMs = processingTime, audioDurationMs = audioDurationMs, timestamp = System.currentTimeMillis())
+                val detected = (if (language == SttLanguage.AUTO) SttLanguage.fromWhisperCode(native.nativeDetectedLanguage(handle)) else language)
+                    ?: throw SttException(SttErrorCode.UNSUPPORTED_LANGUAGE, "Whisper detected an unsupported language")
+                SttResult(text, detected, detectedLanguage = detected, requestedLanguage = language, confidence = null, processingTimeMs = processingTime, audioDurationMs = audioDurationMs, timestamp = System.currentTimeMillis())
             } catch (error: Throwable) {
                 if (error is kotlinx.coroutines.CancellationException && !timedOut.get()) throw error
                 if (timedOut.get()) throw SttException(SttErrorCode.STT_INFERENCE_FAILED, "Transcription timed out after 60 seconds.", error)

@@ -11,7 +11,7 @@ private val Context.sttPreferences by preferencesDataStore(name = "stt_settings"
 
 class SttLanguagePreferences(private val context: Context) {
     val selectedLanguage: Flow<SttLanguage> = context.sttPreferences.data.map { values ->
-        values[LANGUAGE]?.let(SttLanguage::fromWhisperCode) ?: SttLanguage.ENGLISH
+        values[LANGUAGE]?.let(SttLanguage::fromWhisperCode) ?: SttLanguage.AUTO
     }
 
     suspend fun select(language: SttLanguage) {

@@ -12,7 +12,8 @@ class SttCoreTest {
             "ta" to VokieLanguage.TA, "te" to VokieLanguage.TE, "or" to VokieLanguage.OR,
             "bn" to VokieLanguage.BN,
         )
-        assertEquals(expected.size, SttLanguage.entries.size)
+        assertEquals(expected.size + 1, SttLanguage.entries.size)
+        assertEquals(SttLanguage.AUTO, SttLanguage.fromWhisperCode("auto"))
         expected.forEach { (whisper, message) ->
             val language = requireNotNull(SttLanguage.fromWhisperCode(whisper))
             assertEquals(message, language.messageLanguage)

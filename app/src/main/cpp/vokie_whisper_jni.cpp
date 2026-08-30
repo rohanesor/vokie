@@ -60,7 +60,7 @@ Java_com_vokie_stt_WhisperNative_nativeTranscribe(
 
     const char * language_code = env->GetStringUTFChars(language, nullptr);
     if (language_code == nullptr) return nullptr;
-    if (whisper_lang_id(language_code) < 0) {
+    if (std::string(language_code) != "auto" && whisper_lang_id(language_code) < 0) {
         env->ReleaseStringUTFChars(language, language_code);
         throw_java(env, "java/lang/IllegalArgumentException", "Unsupported Whisper language");
         return nullptr;
@@ -107,6 +107,14 @@ Java_com_vokie_stt_WhisperNative_nativeTranscribe(
         if (segment != nullptr) text.append(segment);
     }
     return env->NewStringUTF(text.c_str());
+}
+
+extern "C" JNIEXPORT jstring JNICALL
+Java_com_vokie_stt_WhisperNative_nativeDetectedLanguage(JNIEnv * env, jobject, jlong handle) {
+    whisper_context * context = context_from(handle);
+    if (context == nullptr) { throw_java(env, "java/lang/IllegalStateException", "Whisper context is unavailable"); return nullptr; }
+    const char * language = whisper_lang_str(whisper_full_lang_id(context));
+    return env->NewStringUTF(language == nullptr ? "" : language);
 }
 
 extern "C" JNIEXPORT void JNICALL

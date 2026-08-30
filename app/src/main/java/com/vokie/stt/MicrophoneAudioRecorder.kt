@@ -129,7 +129,8 @@ internal class MicrophoneAudioRecorder(
         val job = captureJob
         if (job != null && job !== kotlinx.coroutines.currentCoroutineContext()[Job]) job.cancelAndJoin()
         captureJob = null
-        return if (vad.hasSpeech && finalized.compareAndSet(false, true)) snapshot() else null
+        // PTT release is authoritative: submit any usable capture, regardless of VAD state.
+        return if (finalized.compareAndSet(false, true) && capturedCount >= MIN_CAPTURE_SAMPLES) snapshot() else null
     }
 
     fun release() {
@@ -171,5 +172,6 @@ internal class MicrophoneAudioRecorder(
         const val FRAME_SAMPLES = 1_600 // 100 ms at 16 kHz
         const val MAX_UTTERANCE_SECONDS = 30
         const val MAX_SAMPLES = WHISPER_SAMPLE_RATE * MAX_UTTERANCE_SECONDS
+        const val MIN_CAPTURE_SAMPLES = WHISPER_SAMPLE_RATE * 300 / 1_000
     }
 }
