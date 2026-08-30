@@ -8,6 +8,10 @@ import com.vokie.domain.model.TransportType
 import com.vokie.map.MapPackManager
 import com.vokie.models.BundledModelStore
 import com.vokie.models.ModelDownloadManager
+import com.vokie.location.AndroidHeadingProvider
+import com.vokie.location.AndroidLocationProvider
+import com.vokie.location.EmergencyGuidanceCoordinator
+import com.vokie.proximity.BluetoothRssiTelemetryProvider
 import com.vokie.map.MapPreferences
 import com.vokie.map.OfflineMapUseCase
 import com.vokie.stt.SpeechToTextUseCase
@@ -43,6 +47,10 @@ class VokieApplication : Application() {
     lateinit var textToSpeech: TextToSpeechUseCase; private set
     private lateinit var receiverTranslation: ReceiverTranslationCoordinator
     lateinit var offlineMap: OfflineMapUseCase; private set
+    lateinit var locationProvider: AndroidLocationProvider; private set
+    lateinit var headingProvider: AndroidHeadingProvider; private set
+    lateinit var rssiTelemetry: BluetoothRssiTelemetryProvider; private set
+    lateinit var emergencyGuidance: EmergencyGuidanceCoordinator; private set
     lateinit var communicationPreferences: CommunicationPreferences; private set
     lateinit var deviceId: String; private set
 
@@ -84,6 +92,11 @@ class VokieApplication : Application() {
                 }
         }
         communicationPreferences = CommunicationPreferences(applicationContext)
+        // Telemetry adapters are constructed but intentionally not started until a future active guidance feature.
+        locationProvider = AndroidLocationProvider(applicationContext)
+        headingProvider = AndroidHeadingProvider(applicationContext)
+        rssiTelemetry = BluetoothRssiTelemetryProvider()
+        emergencyGuidance = EmergencyGuidanceCoordinator()
         val mapManager = MapPackManager(applicationContext)
         val mapPreferences = MapPreferences(applicationContext)
         offlineMap = OfflineMapUseCase(applicationContext, mapManager, mapPreferences)

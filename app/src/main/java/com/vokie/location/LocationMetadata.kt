@@ -1,6 +1,6 @@
 package com.vokie.location
 
-enum class LocationAvailability { AVAILABLE, UNAVAILABLE, PERMISSION_DENIED, INVALID }
+enum class LocationAvailability { AVAILABLE, UNAVAILABLE, PERMISSION_REQUIRED, PERMISSION_DENIED, STALE, INVALID_FIX, INVALID, ERROR }
 
 /** Raw sender/receiver fix. AVAILABLE is the only state allowed to carry coordinates. */
 data class LocationMetadata(
