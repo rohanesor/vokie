@@ -7,18 +7,28 @@ import com.vokie.location.LocationGuidance
 enum class ProximityGuidanceState { SEARCHING, LOCATION_RECEIVED, GUIDANCE_ACTIVE, GETTING_CLOSER, GETTING_FARTHER, STABLE, SIGNAL_UNRELIABLE, LOCATION_STALE, NEARBY }
 data class ProximityGuidance(val state: ProximityGuidanceState, val location: LocationGuidance, val signalTrend: RssiTrend, val confidence: LocationConfidence)
 
-class ProximityGuidanceEngine(private val nearbyMeters: Double = 20.0) {
-    fun guide(location: LocationGuidance, signal: RssiTrend): ProximityGuidance {
-        if (location.freshness == LocationFreshness.STALE) return ProximityGuidance(ProximityGuidanceState.LOCATION_STALE, location, signal, LocationConfidence.UNAVAILABLE)
-        if (location.freshness == LocationFreshness.UNAVAILABLE) return ProximityGuidance(ProximityGuidanceState.SEARCHING, location, signal, LocationConfidence.UNAVAILABLE)
+/** GPS is authoritative for direction. RSSI only confirms/conflicts with movement evidence. */
+class ProximityGuidanceEngine(private val nearbyMeters: Double = 20.0, private val distanceDeltaMeters: Double = 3.0) {
+    fun guide(location: LocationGuidance, previousDistanceMeters: Double?, signal: FilteredRssi?): ProximityGuidance {
+        if (location.freshness == LocationFreshness.STALE) return ProximityGuidance(ProximityGuidanceState.LOCATION_STALE, location, signal?.trend ?: RssiTrend.UNKNOWN, LocationConfidence.STALE)
+        if (location.freshness == LocationFreshness.UNAVAILABLE) return ProximityGuidance(ProximityGuidanceState.SEARCHING, location, signal?.trend ?: RssiTrend.UNKNOWN, LocationConfidence.INVALID)
+        if (location.distanceMeters != null && location.distanceMeters <= nearbyMeters) return ProximityGuidance(ProximityGuidanceState.NEARBY, location, signal?.trend ?: RssiTrend.UNKNOWN, location.confidence)
+        val trend = signal?.takeIf { it.freshness == RssiFreshness.CURRENT }?.trend ?: RssiTrend.UNKNOWN
+        if (trend == RssiTrend.UNSTABLE) return ProximityGuidance(ProximityGuidanceState.SIGNAL_UNRELIABLE, location, trend, LocationConfidence.LOW)
+        val gpsMovement = previousDistanceMeters?.let { previous ->
+            when {
+                location.distanceMeters!! < previous - distanceDeltaMeters -> RssiTrend.STRENGTHENING
+                location.distanceMeters > previous + distanceDeltaMeters -> RssiTrend.WEAKENING
+                else -> RssiTrend.STABLE
+            }
+        } ?: RssiTrend.UNKNOWN
+        val contradictory = (gpsMovement == RssiTrend.STRENGTHENING && trend == RssiTrend.WEAKENING) || (gpsMovement == RssiTrend.WEAKENING && trend == RssiTrend.STRENGTHENING)
         val state = when {
-            location.distanceMeters != null && location.distanceMeters <= nearbyMeters -> ProximityGuidanceState.NEARBY
-            signal == RssiTrend.UNSTABLE -> ProximityGuidanceState.SIGNAL_UNRELIABLE
-            signal == RssiTrend.STRENGTHENING -> ProximityGuidanceState.GETTING_CLOSER
-            signal == RssiTrend.WEAKENING -> ProximityGuidanceState.GETTING_FARTHER
+            contradictory -> ProximityGuidanceState.SIGNAL_UNRELIABLE
+            gpsMovement == RssiTrend.STRENGTHENING && trend == RssiTrend.STRENGTHENING -> ProximityGuidanceState.GETTING_CLOSER
+            gpsMovement == RssiTrend.WEAKENING && trend == RssiTrend.WEAKENING -> ProximityGuidanceState.GETTING_FARTHER
             else -> ProximityGuidanceState.GUIDANCE_ACTIVE
         }
-        val confidence = if (signal == RssiTrend.UNSTABLE) LocationConfidence.LOW else location.confidence
-        return ProximityGuidance(state, location, signal, confidence)
+        return ProximityGuidance(state, location, trend, if (contradictory) LocationConfidence.LOW else location.confidence)
     }
 }

@@ -43,7 +43,8 @@ class DomainFoundationTest {
     }
 
     @Test fun rssiTrendIsEvidenceNotDistance() {
-        val stronger = RssiFilter(1); stronger.add(-80); assertEquals(RssiTrend.STRENGTHENING, stronger.add(-75).trend); assertEquals(RssiTrend.STRENGTHENING, stronger.add(-70).trend)
-        val weaker = RssiFilter(1); weaker.add(-60); assertEquals(RssiTrend.WEAKENING, weaker.add(-67).trend); assertEquals(RssiTrend.WEAKENING, weaker.add(-73).trend)
+        fun telemetry(rssi: Int, time: Long) = ProximityTelemetry("sender", com.vokie.domain.model.TransportType.BLUETOOTH, rssi, time)
+        val stronger = RssiFilter(1); stronger.add(telemetry(-80, 1)); assertEquals(RssiTrend.STRENGTHENING, stronger.add(telemetry(-75, 2)).trend); assertEquals(RssiTrend.STRENGTHENING, stronger.add(telemetry(-70, 3)).trend)
+        val weaker = RssiFilter(1); weaker.add(telemetry(-60, 1)); assertEquals(RssiTrend.WEAKENING, weaker.add(telemetry(-67, 2)).trend); assertEquals(RssiTrend.WEAKENING, weaker.add(telemetry(-73, 3)).trend)
     }
 }

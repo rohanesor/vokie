@@ -2,6 +2,7 @@ package com.vokie.location
 
 enum class LocationAvailability { AVAILABLE, UNAVAILABLE, PERMISSION_DENIED, INVALID }
 
+/** Raw sender/receiver fix. AVAILABLE is the only state allowed to carry coordinates. */
 data class LocationMetadata(
     val latitude: Double? = null,
     val longitude: Double? = null,
@@ -13,8 +14,10 @@ data class LocationMetadata(
     init {
         require(locationSequence >= 0)
         if (availability == LocationAvailability.AVAILABLE) {
-            require(latitude != null && latitude in -90.0..90.0 && longitude != null && longitude in -180.0..180.0)
-            require(accuracyMeters != null && accuracyMeters >= 0f && timestamp != null && timestamp > 0)
+            require(latitude != null && latitude.isFinite() && latitude in -90.0..90.0)
+            require(longitude != null && longitude.isFinite() && longitude in -180.0..180.0)
+            require(accuracyMeters != null && accuracyMeters.isFinite() && accuracyMeters >= 0f)
+            require(timestamp != null && timestamp > 0)
         }
     }
 }
