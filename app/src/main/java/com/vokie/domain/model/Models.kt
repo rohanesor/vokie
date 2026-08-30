@@ -11,7 +11,10 @@ enum class VokieLanguage(val code: String, val displayName: String) {
     HI("HI", "Hindi"), GU("GU", "Gujarati"), MR("MR", "Marathi"), KN("KN", "Kannada"),
     ML("ML", "Malayalam"), TA("TA", "Tamil"), TE("TE", "Telugu"), OR("OR", "Odia"),
     BN("BN", "Bengali"), EN("EN", "English");
-    companion object { fun isSupported(code: String) = entries.any { it.code == code } }
+    companion object {
+        fun fromCode(code: String): VokieLanguage? = entries.firstOrNull { it.code == code.uppercase() }
+        fun isSupported(code: String) = fromCode(code) != null
+    }
 }
 
 data class Message(
