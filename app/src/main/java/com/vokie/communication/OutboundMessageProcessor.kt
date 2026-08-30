@@ -30,19 +30,19 @@ class OutboundMessageProcessor(
     private suspend fun process(ids: List<String>) = mutex.withLock {
         for (id in ids) {
             val message = repository.getMessage(id)?.takeIf { it.deliveryState == com.vokie.domain.model.DeliveryState.QUEUED || it.deliveryState == com.vokie.domain.model.DeliveryState.RETRYING } ?: continue
-            val transport = transports.activeTransport() ?: return
-            repository.markTransmitting(id, transport.type)
-            events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transport.type.name, eventType = "TRANSMISSION_STARTED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = null))
-            val result = transport.send(message)
+            val transportType = transports.activeTransportType() ?: return
+            repository.markTransmitting(id, transportType)
+            events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transportType.name, eventType = "TRANSMISSION_STARTED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = null))
+            val result = transports.sendMessage(message)
             if (result.acknowledged) {
                 repository.markReceived(id)
-                events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transport.type.name, eventType = "ACK_RECEIVED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = result.ackLatencyMs))
+                events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transportType.name, eventType = "ACK_RECEIVED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = result.ackLatencyMs))
             } else if (transports.connectionState.value != TransportConnectionState.CONNECTED) {
                 repository.markQueued(id, result.error ?: "Connection lost")
                 return
             } else {
                 val retry = repository.incrementRetry(id, result.error ?: "No acknowledgement received")
-                if (RetryPolicy.exhausted(retry)) { repository.markFailed(id, result.error ?: "Retry limit reached"); events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transport.type.name, eventType = "TRANSMISSION_FAILED", peerId = transports.connectedPeerId.value, messageId = id, detail = result.error, latencyMs = null)) }
+                if (RetryPolicy.exhausted(retry)) { repository.markFailed(id, result.error ?: "Retry limit reached"); events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transportType.name, eventType = "TRANSMISSION_FAILED", peerId = transports.connectedPeerId.value, messageId = id, detail = result.error, latencyMs = null)) }
                 else {
                     delay(RetryPolicy.delayMillis(retry))
                     repository.markQueued(id, result.error)

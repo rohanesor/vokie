@@ -25,6 +25,19 @@ class TransportManager(
     suspend fun sendPacket(packet: ByteArray) {
         activePacketTransport()?.send(packet) ?: throw IllegalStateException("No connected packet transport")
     }
+
+    /** Single queue entry point. PacketV2 is encoded here, then only bytes cross PacketTransport. */
+    suspend fun sendMessage(message: Message): SendResult {
+        val packetTransport = activePacketTransport()
+        if (packetTransport != null) {
+            return runCatching {
+                PacketV2.fromMessage(message).forEach { packetTransport.send(it) }
+                SendResult(message.id, false, error = "Wi-Fi Direct packet sent; ACK correlation is pending")
+            }.getOrElse { SendResult(message.id, false, error = "Wi-Fi Direct send failed: ${it.message}") }
+        }
+        // Compatibility fallback until Bluetooth exposes its raw PacketTransport session.
+        return activeTransport()?.send(message) ?: SendResult(message.id, false, error = "No connected transport")
+    }
     fun incomingPackets(): Flow<ByteArray> = wifiDirect?.observePackets() ?: kotlinx.coroutines.flow.emptyFlow()
     suspend fun discoverWifiDirect() { wifiDirect?.discover() ?: error("Wi-Fi Direct unavailable") }
     suspend fun connectWifiDirect(address: String) { wifiDirect?.connect(address) ?: error("Wi-Fi Direct unavailable") }

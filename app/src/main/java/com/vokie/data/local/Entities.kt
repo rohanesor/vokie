@@ -50,5 +50,8 @@ data class TransportEventEntity(
 
 @Entity(tableName = "emergency_alerts")
 data class EmergencyAlertEntity(@PrimaryKey val id: String, val severity: String, val title: String, val body: String, val timestamp: Long, val source: String, val status: String)
+@Entity(tableName = "received_packets", primaryKeys = ["sourceDeviceId", "messageId", "sequenceNumber"])
+data class ReceivedPacketEntity(val sourceDeviceId: String, val messageId: String, val sequenceNumber: Long, val receivedAt: Long, val expiresAt: Long)
+
 @Entity(tableName = "app_settings")
 data class AppSettingsEntity(@PrimaryKey val id: Int = 1, val language: String, val walkieTalkieMode: Boolean, val darkMode: Boolean, val haptics: Boolean)
