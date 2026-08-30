@@ -21,6 +21,11 @@ class TextToSpeechUseCase(
     suspend fun setSpeed(speed: Float) = preferences.setSpeed(speed)
 
     suspend fun enqueueReceived(message: Message) = queue.enqueue(message.toTtsQueueItem())
+    suspend fun enqueueReceived(messageId: String, text: String, language: com.vokie.domain.model.VokieLanguage, type: com.vokie.domain.model.MessageType) {
+        val ttsLanguage = TtsLanguage.fromMessageCode(language.code)
+            ?: throw TtsException(TtsErrorCode.UNSUPPORTED_LANGUAGE, "Message language ${language.code} is not supported for speech.")
+        queue.enqueue(TtsQueueItem(messageId, text, ttsLanguage, type))
+    }
     suspend fun play(message: Message) = queue.enqueue(message.toTtsQueueItem())
     suspend fun stop(messageId: String? = null) = queue.stop(messageId)
     suspend fun acknowledgeSos(messageId: String) = queue.stop(messageId, acknowledgedSos = true)
