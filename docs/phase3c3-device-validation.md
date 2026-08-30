@@ -6,4 +6,4 @@ DEVICE_VALIDATION = BLOCKED
 TWO_DEVICE_TEST = NOT_AVAILABLE
 ```
 
-No `adb` devices were available. Wi-Fi primary, Bluetooth fallback, same-transport ACK, offline transfer, reconnect, CPU, RAM, and battery metrics are **NOT MEASURED**.
+No `adb` devices were available. Wi-Fi primary, Bluetooth raw transport, same-transport ACK, fallback, offline transfer, CPU, RAM, and battery metrics are **NOT MEASURED**.
