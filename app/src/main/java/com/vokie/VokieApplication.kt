@@ -49,8 +49,9 @@ class VokieApplication : Application() {
         messageRepository = RoomMessageRepository(database.messages())
         bluetoothTransport = BluetoothTransport(applicationContext, applicationScope)
         wifiDirectTransport = WifiDirectTransport(applicationContext, applicationScope)
-        transportManager = TransportManager(bluetoothTransport, wifiDirectTransport)
+        transportManager = TransportManager(bluetoothTransport, wifiDirectTransport, applicationScope)
         outboundProcessor = OutboundMessageProcessor(messageRepository, transportManager, database.transportEvents(), applicationScope)
+        val inboundPackets = InboundPacketCoordinator(messageRepository, database.receivedPackets())
         sttEngine = WhisperSttEngine(applicationContext)
         sttLanguagePreferences = SttLanguagePreferences(applicationContext)
         speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)
@@ -81,25 +82,18 @@ class VokieApplication : Application() {
         applicationScope.launch { offlineMap.refresh() }
 
         applicationScope.launch {
-            transportManager.incomingPackets().collect { bytes ->
-                runCatching { PacketV2.decode(bytes) }.getOrNull()?.let { frame ->
-                    if (frame is PacketV2.Decoded.MessagePacket) {
-                        // Full Room-backed replay/ACK routing remains a hardening task; never play partial data.
-                        VokieLog.msg("Wi-Fi Direct packet received: ${frame.packet.messageId}")
+            transportManager.incomingPackets().collect { incoming ->
+                runCatching {
+                    inboundPackets.accept(incoming.bytes, incoming.transport) { transport, messageId ->
+                        transportManager.sendAck(transport, messageId, deviceId)
                     }
-                }
+                }.onFailure { VokieLog.msg("Incoming packet rejected: ${it.message}") }
             }
         }
         applicationScope.launch {
-            transportManager.incomingMessages().collect { message ->
-                try {
-                    val inserted = messageRepository.persistIncoming(message)
-                    database.transportEvents().insert(TransportEventEntity(timestamp = System.currentTimeMillis(), transport = TransportType.BLUETOOTH.name, eventType = if (inserted) "MESSAGE_RECEIVED" else "DUPLICATE_RECEIVED", peerId = bluetoothTransport.connectedPeerId.value, messageId = message.id, detail = null, latencyMs = null))
-                    if (message.requiresAck) runCatching { transportManager.acknowledge(message.id) }.onFailure { VokieLog.msg("ACK send failed: ${message.id}: ${it.message}") }
-                    if (inserted) runCatching { textToSpeech.enqueueReceived(message) }.onFailure { VokieLog.tts("Incoming message could not be queued for speech: ${it.message}") }
-                } catch (error: Throwable) {
-                    VokieLog.msg("Incoming message rejected: ${error.message}")
-                }
+            inboundPackets.messages.collect { message ->
+                runCatching { textToSpeech.enqueueReceived(message) }
+                    .onFailure { VokieLog.tts("Incoming message could not be queued for speech: ${it.message}") }
             }
         }
         applicationScope.launch(Dispatchers.IO) {

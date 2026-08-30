@@ -10,7 +10,9 @@ import kotlinx.coroutines.flow.map
 class TransportManager(
     private val bluetooth: BluetoothTransport,
     private val wifiDirect: PacketTransport? = null,
+    scope: kotlinx.coroutines.CoroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default),
 ) {
+    private val bluetoothPacket = BluetoothPacketTransport(bluetooth, scope)
     val connectionState: StateFlow<TransportConnectionState> = bluetooth.connectionState
     val peers = bluetooth.peers
     val connectedPeerId = bluetooth.connectedPeerId
@@ -19,8 +21,9 @@ class TransportManager(
 
     /** Wi-Fi Direct has priority only when its lifecycle is actually CONNECTED. */
     fun activePacketTransport(): PacketTransport? = wifiDirect?.takeIf { it.state.value == PacketTransportState.CONNECTED }
+        ?: bluetoothPacket.takeIf { it.state.value == PacketTransportState.CONNECTED }
     fun activeTransport(): Transport? = bluetooth.takeIf { it.connectionState.value == TransportConnectionState.CONNECTED }
-    fun activeTransportType(): TransportType? = activePacketTransport()?.type ?: activeTransport()?.type
+    fun activeTransportType(): TransportType? = activePacketTransport()?.type
 
     suspend fun sendPacket(packet: ByteArray) {
         activePacketTransport()?.send(packet) ?: throw IllegalStateException("No connected packet transport")
@@ -38,7 +41,15 @@ class TransportManager(
         // Compatibility fallback until Bluetooth exposes its raw PacketTransport session.
         return activeTransport()?.send(message) ?: SendResult(message.id, false, error = "No connected transport")
     }
-    fun incomingPackets(): Flow<ByteArray> = wifiDirect?.observePackets() ?: kotlinx.coroutines.flow.emptyFlow()
+    data class IncomingPacket(val transport: PacketTransport, val bytes: ByteArray)
+    fun incomingPackets(): Flow<IncomingPacket> = kotlinx.coroutines.flow.merge(
+        (wifiDirect?.observePackets() ?: kotlinx.coroutines.flow.emptyFlow()).map { IncomingPacket(wifiDirect!!, it) },
+        bluetoothPacket.observePackets().map { IncomingPacket(bluetoothPacket, it) },
+    )
+
+    suspend fun sendAck(transport: PacketTransport, messageId: String, receiverId: String) {
+        transport.send(PacketV2.encodeAck(messageId, receiverId, System.currentTimeMillis()))
+    }
     suspend fun discoverWifiDirect() { wifiDirect?.discover() ?: error("Wi-Fi Direct unavailable") }
     suspend fun connectWifiDirect(address: String) { wifiDirect?.connect(address) ?: error("Wi-Fi Direct unavailable") }
     suspend fun disconnectWifiDirect() { wifiDirect?.disconnect() }

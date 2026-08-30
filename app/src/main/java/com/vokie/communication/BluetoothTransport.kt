@@ -45,6 +45,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     private var output: DataOutputStream? = null
     private var receiverRegistered = false
     private val received = MutableSharedFlow<Message>(extraBufferCapacity = 32)
+    private val receivedPackets = MutableSharedFlow<ByteArray>(extraBufferCapacity = 32)
     private val ackTracker = AckTracker()
     private val reassembler = PacketReassembler()
 
@@ -159,6 +160,12 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     }
 
     override fun observeMessages(): Flow<Message> = received.asSharedFlow()
+    fun observePackets(): Flow<ByteArray> = receivedPackets.asSharedFlow()
+    suspend fun sendPacket(packet: ByteArray) = withContext(Dispatchers.IO) {
+        val stream = output ?: throw IOException("No connected iTantra device")
+        require(packet.isNotEmpty() && packet.size <= PacketV2.MAX_FRAME_BYTES)
+        synchronized(stream) { stream.writeInt(packet.size); stream.write(packet); stream.flush() }
+    }
 
     override suspend fun acknowledge(messageId: String) = withContext(Dispatchers.IO) {
         val localId = context.getSharedPreferences("vokie_identity", Context.MODE_PRIVATE).getString("device_id", null) ?: error("Device identity unavailable")
@@ -173,6 +180,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                     val size = input?.readInt() ?: break
                     if (size <= 0 || size > 64 * 1024) throw IOException("Invalid iTantra frame size")
                     val bytes = ByteArray(size); input!!.readFully(bytes)
+                    receivedPackets.tryEmit(bytes)
                     when (val frame = PacketV2.decode(bytes)) {
                         is PacketV2.Decoded.Ack -> if (!ackTracker.acknowledge(frame.messageId)) VokieLog.msg("Unknown ACK ignored: ${frame.messageId}")
                         is PacketV2.Decoded.MessagePacket -> reassembler.add(frame)?.let { received.emit(it) }

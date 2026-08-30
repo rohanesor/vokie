@@ -11,6 +11,7 @@ import android.net.wifi.p2p.WifiP2pDeviceList
 import android.net.wifi.p2p.WifiP2pInfo
 import android.net.wifi.p2p.WifiP2pManager
 import com.vokie.domain.model.TransportType
+import com.vokie.domain.model.TransportConnectionState
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.*
@@ -35,6 +36,24 @@ interface PacketTransport {
 
 enum class PacketTransportState { IDLE, DISCOVERING, CONNECTING, CONNECTED, DISCONNECTING, FAILED }
 data class WifiPeer(val address: String, val name: String, val available: Boolean)
+
+/** Raw-byte RFCOMM adapter; legacy Message APIs remain only for compatibility. */
+class BluetoothPacketTransport(private val legacy: BluetoothTransport, scope: CoroutineScope) : PacketTransport {
+    override val type = TransportType.BLUETOOTH
+    override val state: StateFlow<PacketTransportState> = legacy.connectionState.map { when (it) {
+        TransportConnectionState.CONNECTED -> PacketTransportState.CONNECTED
+        TransportConnectionState.SEARCHING -> PacketTransportState.DISCOVERING
+        TransportConnectionState.CONNECTING -> PacketTransportState.CONNECTING
+        TransportConnectionState.FAILED -> PacketTransportState.FAILED
+        else -> PacketTransportState.IDLE
+    }}.stateIn(scope, SharingStarted.Eagerly, PacketTransportState.IDLE)
+    override val peers: StateFlow<List<WifiPeer>> = legacy.peers.map { list -> list.map { WifiPeer(it.address, it.name, it.bonded) }}.stateIn(scope, SharingStarted.Eagerly, emptyList())
+    override suspend fun discover() = legacy.discoverPeers()
+    override suspend fun connect(deviceAddress: String) = legacy.connect(deviceAddress)
+    override suspend fun send(packet: ByteArray) = legacy.sendPacket(packet)
+    override suspend fun disconnect() = legacy.disconnect()
+    override fun observePackets(): Flow<ByteArray> = legacy.observePackets()
+}
 
 /** Shared TCP framing used by Wi-Fi Direct. It handles short reads and rejects bad lengths. */
 object LengthPrefixedFrames {
