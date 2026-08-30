@@ -48,6 +48,8 @@ private class MemoryMessageDao : MessageDao {
     override suspend fun markTransmitting(id: String, transport: String) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = "TRANSMITTING", transport = transport, lastError = null) else it } }
     override suspend fun incrementRetry(id: String, state: String, error: String) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = state, retryCount = it.retryCount + 1, lastError = error) else it } }
     override suspend fun resetForManualRetry(id: String) { rows.value = rows.value.map { if (it.id == id) it.copy(deliveryState = "QUEUED", retryCount = 0, lastError = null) else it } }
+    override suspend fun retryable(now: Long) = rows.value.filter { it.deliveryState == "RETRYING" && (it.nextRetryAt ?: Long.MAX_VALUE) <= now && it.timestamp + it.ttlMs > now }
+    override suspend fun expire(now: Long, reason: String): Int { val before = rows.value.size; rows.value = rows.value.map { if (it.deliveryState in setOf("QUEUED", "RETRYING", "TRANSMITTING") && it.timestamp + it.ttlMs <= now) it.copy(deliveryState = "EXPIRED", lastError = reason) else it }; return before - rows.value.size }
     override suspend fun recoverInterrupted() { rows.value = rows.value.map { if (it.deliveryState == "TRANSMITTING") it.copy(deliveryState = "QUEUED") else it } }
     override suspend fun delete(id: String) { rows.value = rows.value.filterNot { it.id == id } }
 }

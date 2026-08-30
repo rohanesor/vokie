@@ -84,8 +84,8 @@ class VokieApplication : Application() {
         applicationScope.launch {
             transportManager.incomingPackets().collect { incoming ->
                 runCatching {
-                    inboundPackets.accept(incoming.bytes, incoming.transport) { transport, messageId ->
-                        transportManager.sendAck(transport, messageId, deviceId)
+                    inboundPackets.accept(incoming.bytes, incoming.transport) { transport, messageId, sequenceNumber ->
+                        transportManager.sendAck(transport, messageId, deviceId, sequenceNumber)
                     }
                 }.onFailure { VokieLog.msg("Incoming packet rejected: ${it.message}") }
             }

@@ -13,7 +13,9 @@ interface MessageDao {
     @Query("UPDATE messages SET deliveryState = :state, lastError = :error WHERE id = :id") suspend fun setState(id: String, state: String, error: String? = null)
     @Query("UPDATE messages SET deliveryState = 'TRANSMITTING', transport = :transport, lastError = NULL WHERE id = :id") suspend fun markTransmitting(id: String, transport: String)
     @Query("UPDATE messages SET deliveryState = :state, retryCount = retryCount + 1, lastError = :error WHERE id = :id") suspend fun incrementRetry(id: String, state: String, error: String)
-    @Query("UPDATE messages SET deliveryState = 'QUEUED', retryCount = 0, lastError = NULL WHERE id = :id") suspend fun resetForManualRetry(id: String)
+    @Query("UPDATE messages SET deliveryState = 'QUEUED', retryCount = 0, lastError = NULL, nextRetryAt = NULL WHERE id = :id") suspend fun resetForManualRetry(id: String)
+    @Query("SELECT * FROM messages WHERE deliveryState = 'RETRYING' AND nextRetryAt IS NOT NULL AND nextRetryAt <= :now AND timestamp + ttlMs > :now ORDER BY timestamp ASC") suspend fun retryable(now: Long): List<MessageEntity>
+    @Query("UPDATE messages SET deliveryState = 'EXPIRED', lastError = :reason WHERE deliveryState IN ('QUEUED','RETRYING','TRANSMITTING') AND timestamp + ttlMs <= :now") suspend fun expire(now: Long, reason: String = "TTL expired"): Int
     @Query("UPDATE messages SET deliveryState = 'QUEUED', lastError = 'Transmission interrupted; queued after restart' WHERE deliveryState = 'TRANSMITTING'") suspend fun recoverInterrupted()
     @Query("DELETE FROM messages WHERE id = :id") suspend fun delete(id: String)
 }
@@ -28,7 +30,7 @@ interface ReceivedPacketDao {
 @Dao interface PeerDao { @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(peer: PeerEntity); @Query("SELECT * FROM peers ORDER BY lastSeen DESC") fun observeAll(): Flow<List<PeerEntity>> }
 @Dao interface TransportEventDao { @Insert suspend fun insert(event: TransportEventEntity); @Query("SELECT * FROM transport_events ORDER BY timestamp DESC LIMIT :limit") fun observeRecent(limit: Int = 100): Flow<List<TransportEventEntity>> }
 
-@Database(entities = [MessageEntity::class, PeerEntity::class, TransportEventEntity::class, EmergencyAlertEntity::class, ReceivedPacketEntity::class, AppSettingsEntity::class], version = 3, exportSchema = true)
+@Database(entities = [MessageEntity::class, PeerEntity::class, TransportEventEntity::class, EmergencyAlertEntity::class, ReceivedPacketEntity::class, AppSettingsEntity::class], version = 4, exportSchema = true)
 abstract class VokieDatabase : RoomDatabase() {
     abstract fun messages(): MessageDao
     abstract fun receivedPackets(): ReceivedPacketDao
@@ -36,6 +38,7 @@ abstract class VokieDatabase : RoomDatabase() {
     abstract fun transportEvents(): TransportEventDao
 
     companion object {
+        val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) { override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) { database.execSQL("ALTER TABLE messages ADD COLUMN nextRetryAt INTEGER") } }
         val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) { database.execSQL("CREATE TABLE IF NOT EXISTS received_packets (sourceDeviceId TEXT NOT NULL, messageId TEXT NOT NULL, sequenceNumber INTEGER NOT NULL, receivedAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL, PRIMARY KEY(sourceDeviceId, messageId, sequenceNumber))") }
         }
@@ -50,7 +53,7 @@ abstract class VokieDatabase : RoomDatabase() {
         @Volatile private var instance: VokieDatabase? = null
         fun get(context: android.content.Context): VokieDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, VokieDatabase::class.java, "vokie.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
                 .build().also { instance = it }
         }
     }

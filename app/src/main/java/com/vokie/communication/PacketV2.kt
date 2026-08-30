@@ -20,7 +20,7 @@ object PacketV2 {
     private const val MAX_STRING_BYTES = 512
 
     data class Fragment(val messageId: String, val sequenceNumber: Long, val sourceDeviceId: String, val timestamp: Long, val ttlMs: Long, val priority: Int, val languageCode: String, val index: Int, val count: Int, val payload: ByteArray)
-    sealed interface Decoded { data class MessagePacket(val packet: Fragment, val messageType: MessageType, val receiverId: String?, val requiresAck: Boolean) : Decoded; data class Ack(val messageId: String, val receiverId: String, val timestamp: Long) : Decoded }
+    sealed interface Decoded { data class MessagePacket(val packet: Fragment, val messageType: MessageType, val receiverId: String?, val requiresAck: Boolean) : Decoded; data class Ack(val messageId: String, val receiverId: String, val timestamp: Long, val sequenceNumber: Long = 0) : Decoded }
 
     fun fromMessage(message: Message, maxPayload: Int = MAX_PAYLOAD_BYTES): List<ByteArray> {
         require(maxPayload in 1..MAX_PAYLOAD_BYTES)
@@ -46,8 +46,8 @@ object PacketV2 {
         return ByteArrayOutputStream().also { stream -> DataOutputStream(stream).use { out -> out.write(withoutCrc); out.writeInt(crc) } }.toByteArray().also { require(it.size <= MAX_FRAME_BYTES) }
     }
 
-    fun encodeAck(messageId: String, receiverId: String, timestamp: Long): ByteArray {
-        val body = ByteArrayOutputStream(); DataOutputStream(body).use { out -> out.writeShort(MAGIC); out.writeByte(VERSION); out.writeByte(FLAG_ACK); string(out,messageId); out.writeLong(0); string(out,receiverId); out.writeLong(timestamp); out.writeLong(0); out.writeByte(0); string(out,"EN"); out.writeShort(0); out.writeShort(1); out.writeInt(0); out.writeByte(0); string(out,""); out.writeBoolean(false) }
+    fun encodeAck(messageId: String, receiverId: String, timestamp: Long, sequenceNumber: Long = 0): ByteArray {
+        val body = ByteArrayOutputStream(); DataOutputStream(body).use { out -> out.writeShort(MAGIC); out.writeByte(VERSION); out.writeByte(FLAG_ACK); string(out,messageId); out.writeLong(sequenceNumber); string(out,receiverId); out.writeLong(timestamp); out.writeLong(0); out.writeByte(0); string(out,"EN"); out.writeShort(0); out.writeShort(1); out.writeInt(0); out.writeByte(0); string(out,""); out.writeBoolean(false) }
         val raw=body.toByteArray(); val crc=CRC32().apply{update(raw)}.value.toInt(); return ByteArrayOutputStream().also{DataOutputStream(it).use{out->out.write(raw);out.writeInt(crc)}}.toByteArray()
     }
 
@@ -58,7 +58,7 @@ object PacketV2 {
         return DataInputStream(ByteArrayInputStream(bytes, 0, bytes.size - 4)).use { input ->
             require(input.readUnsignedShort() == MAGIC) { "Invalid packet magic" }; require(input.readUnsignedByte() == VERSION) { "Unsupported packet version" }
             val flags=input.readUnsignedByte(); val id=readString(input); val sequence=input.readLong(); val source=readString(input); val timestamp=input.readLong(); val ttl=input.readLong(); val priority=input.readUnsignedByte(); val language=readString(input); val index=input.readUnsignedShort(); val count=input.readUnsignedShort(); val length=input.readInt(); require(length in 0..MAX_PAYLOAD_BYTES && length <= input.available()) { "Invalid payload length" }; val payload=ByteArray(length); input.readFully(payload); val type=MessageType.entries.getOrNull(input.readUnsignedByte()) ?: error("Invalid message type"); val receiver=readString(input).ifEmpty { null }; val ack=input.readBoolean(); require(input.available()==0)
-            if (flags and FLAG_ACK != 0) Decoded.Ack(id,source,timestamp) else Decoded.MessagePacket(Fragment(id,sequence,source,timestamp,ttl,priority,language,index,count,payload),type,receiver,ack)
+            if (flags and FLAG_ACK != 0) Decoded.Ack(id,source,timestamp,sequence) else Decoded.MessagePacket(Fragment(id,sequence,source,timestamp,ttl,priority,language,index,count,payload),type,receiver,ack)
         }
     }
 

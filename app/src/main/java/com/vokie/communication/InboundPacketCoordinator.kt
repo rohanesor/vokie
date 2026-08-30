@@ -18,7 +18,7 @@ class InboundPacketCoordinator(
     private val _messages = MutableSharedFlow<Message>(extraBufferCapacity = 32)
     val messages: SharedFlow<Message> = _messages.asSharedFlow()
 
-    suspend fun accept(bytes: ByteArray, transport: PacketTransport, acknowledge: suspend (PacketTransport, String) -> Unit) {
+    suspend fun accept(bytes: ByteArray, transport: PacketTransport, acknowledge: suspend (PacketTransport, String, Long) -> Unit) {
         val decoded = runCatching { PacketV2.decode(bytes) }.getOrNull() ?: return
         if (decoded is PacketV2.Decoded.Ack) return
         val packet = decoded as PacketV2.Decoded.MessagePacket
@@ -27,7 +27,7 @@ class InboundPacketCoordinator(
         if (now() >= expiry) return
         val inserted = replayDao.insert(ReceivedPacketEntity(complete.senderId, complete.id, complete.sequenceNumber, now(), expiry))
         if (inserted == -1L) return
-        if (repository.persistIncoming(complete)) acknowledge(transport, complete.id)
+        if (repository.persistIncoming(complete)) acknowledge(transport, complete.id, complete.sequenceNumber)
         _messages.emit(complete)
     }
 }

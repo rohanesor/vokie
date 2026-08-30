@@ -22,6 +22,7 @@ data class MessageEntity(
     val ttlMs: Long = 300000,
     val priority: Int = 0,
     val checksum: Long = 0,
+    val nextRetryAt: Long? = null,
 )
 
 @Entity(tableName = "peers")
