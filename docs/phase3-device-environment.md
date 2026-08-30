@@ -2,91 +2,106 @@
 
 ## Verification date
 
-2026-08-30. Commands were executed from Windows PowerShell through the Windows Android SDK/ADB, while the repository is located at `D:\vibe\vokie`.
+2026-08-30. Windows PowerShell/Windows Java/Windows Android SDK were used for Gradle, and Windows ADB controlled both endpoints. No personal files, contacts, messages, photos, accounts, or credentials were collected.
 
-## Device A
+## Device A — physical
 
 | Field | Result |
 |---|---|
 | Type | Physical Android device |
 | Manufacturer | realme |
 | Model | RMX3782 / narzo 60x 5G |
-| Android | 15 |
-| API | 35 |
+| Android/API | 15 / 35 |
 | ABI | arm64-v8a |
 | ADB serial | MJPVXCSG9HYL65YL |
 | ADB state | `device` / authorized |
-| Display | 1080x2400 |
-| Density | 480 dpi |
+| Display/density | 1080x2400 / 480 dpi |
 | Application ID | `com.vokie` |
-| Installed version | versionName 1.0.0, versionCode 1 |
-| Microphone permission | granted=true |
+| Version | 1.0.0 / versionCode 1 |
+| Microphone | RECORD_AUDIO granted=true |
 
-## Device B
+## Device B — virtual
 
-```text
-NOT AVAILABLE
-```
-
-`adb devices -l` lists only Device A. No Android Studio emulator or second physical device is connected to the Windows ADB server.
-
-## Windows build/deployment verification
-
-| Check | Result | Evidence |
-|---|---|---|
-| Windows Java | PASS | Microsoft OpenJDK 17.0.18 at `C:\Program Files\Microsoft\jdk-17.0.18.8-hotspot` |
-| Windows SDK | PASS | `C:\Users\kille\AppData\Local\Android\Sdk` exists |
-| Windows ADB | PASS | ADB 1.0.41 / 37.0.0-14910828 |
-| Build Tools 34.0.0 | PASS | `aapt.exe`, `zipalign.exe`, and `apksigner.bat` present |
-| Windows Gradle tests | PASS | wrapper main executed with Windows Java; `BUILD SUCCESSFUL` |
-| Windows debug build | PASS | `assembleDebug --no-daemon`; `BUILD SUCCESSFUL` |
-| Debug APK | PASS | `D:\vibe\vokie\app\build\outputs\apk\debug\app-debug.apk`, 198,787,226 bytes |
-| APK installation | PASS | `adb install -r`; `Success` |
-| APK launch | PASS | `monkey -p com.vokie 1`; `MainActivity` focused/displayed |
-| Logcat | PASS | filtered package logs captured; no `AndroidRuntime` crash observed |
-| Microphone permission | PASS | installed package reports `RECORD_AUDIO: granted=true`; actual PTT benchmark remains pending manual interaction |
-
-The correct Windows test commands use the Gradle wrapper JAR because this checkout contains `gradlew` but not `gradlew.bat`:
-
-```powershell
-Set-Location D:\vibe\vokie
-java -classpath gradle\wrapper\gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain test --no-daemon
-java -classpath gradle\wrapper\gradle-wrapper.jar org.gradle.wrapper.GradleWrapperMain assembleDebug --no-daemon
-```
-
-This avoids the WSL/Linux SDK mismatch. No project SDK path, PATH, or application source was changed.
-
-## Launch/log evidence
-
-The installed current debug APK launched `com.vokie/.MainActivity`. Relevant filtered logs included the local Whisper model load event and Android activity display events. No crash was observed in the captured log window.
-
-## Transport capability
-
-| Capability | Status |
+| Field | Result |
 |---|---|
-| Wi-Fi Direct peer discovery | UNKNOWN — no second device |
-| Wi-Fi Direct connection/TCP | UNKNOWN — no second device |
-| Bluetooth Classic RFCOMM | UNKNOWN — no second device |
-| Two-device transport validation | BLOCKED |
-| Internet-off local transfer | NOT MEASURED |
+| Type | Android Studio emulator |
+| AVD name | Pixel_10_Pro_XL |
+| Reported manufacturer | Google |
+| Reported model | sdk_gphone16k_x86_64 |
+| Android/API | 17 / 37 |
+| ABI | x86_64 |
+| ADB serial | emulator-5554 |
+| ADB state | `device` |
+| Display/density | 1344x2992 / 480 dpi |
+| Application ID | `com.vokie` |
+| Version | 1.0.0 / versionCode 1 |
+| Microphone | RECORD_AUDIO granted=false; manual permission acceptance remains required |
 
-The presence of a radio or Android API is not treated as proof of usable peer-to-peer transport.
+The AVD is named Pixel 10 Pro XL, but the runtime property reports the generic emulator model `sdk_gphone16k_x86_64`; both values are recorded rather than conflated.
 
-## Final environment status
+## ADB and build/deployment checks
+
+| Capability | Result | Evidence |
+|---|---|---|
+| Windows Java | PASS | Microsoft OpenJDK 17.0.18 |
+| Windows SDK | PASS | `C:\Users\kille\AppData\Local\Android\Sdk` |
+| Build Tools 34.0.0 | PASS | `aapt.exe`, `zipalign.exe`, `apksigner.bat` present |
+| Device A detected | PASS | `MJPVXCSG9HYL65YL device` |
+| Device B detected | PASS | `emulator-5554 device` |
+| Both ADB-authorized | PASS | both status values are `device` |
+| Windows Gradle tests | PASS | wrapper JAR + Windows Java, `BUILD SUCCESSFUL` |
+| Windows debug build | PASS | `assembleDebug --no-daemon`, `BUILD SUCCESSFUL` |
+| APK | PASS | `D:\vibe\vokie\app\build\outputs\apk\debug\app-debug.apk`, 198,787,226 bytes |
+| APK install A | PASS | `adb -s MJPVXCSG9HYL65YL install -r`, `Success` |
+| APK install B | PASS | `adb -s emulator-5554 install -r`, `Success` |
+| App launch A | PASS | MainActivity focused/displayed |
+| App launch B | PASS | MainActivity started/displayed; no crash observed |
+| Logcat A | PASS | package-filtered logs captured |
+| Logcat B | PASS | package-filtered logs captured |
+| Microphone A | PASS | permission already granted |
+| Microphone B | PARTIAL | permission is false; manual Android permission acceptance is required |
+
+## ADB result
 
 ```text
-ADB STATUS = PASS
-WINDOWS JAVA = PASS
-WINDOWS ANDROID SDK = PASS
-WINDOWS DEBUG BUILD = PASS
-CURRENT DEBUG APK INSTALL = PASS
-CURRENT DEBUG APK LAUNCH = PASS
-LOGCAT = PASS
-MICROPHONE PERMISSION = PASS
-DEVICE A = READY
-DEVICE B = NOT AVAILABLE
-REAL DEVICE BUILD/DEPLOYMENT = READY FOR SINGLE-DEVICE TESTING
-TWO_DEVICE TESTING = BLOCKED
+List of devices attached
+MJPVXCSG9HYL65YL       device product:RMX3782 model:RMX3782
+emulator-5554          device product:sdk_gphone16k_x86_64 model:sdk_gphone16k_x86_64
 ```
 
-No release build, dataset/model download, AWS action, training, or product source-code change was performed for this environment verification.
+## Transport classification
+
+| Capability | Result |
+|---|---|
+| Two-endpoint ADB | PASS |
+| Two-endpoint software testing | READY |
+| Physical phone-to-phone testing | BLOCKED — Device B is virtual |
+| Wi-Fi Direct physical validation | BLOCKED |
+| Bluetooth Classic RFCOMM physical validation | BLOCKED |
+| Emulator/phone Wi-Fi Direct equivalence | NOT CLAIMED |
+| Emulator/phone Bluetooth Classic equivalence | NOT CLAIMED |
+| Offline physical transfer | NOT MEASURED |
+
+The emulator is suitable for APK, protocol, Room, lifecycle, and software-level testing only. Its presence does not prove genuine Wi-Fi Direct or Bluetooth Classic behavior with the physical handset.
+
+## Final classification
+
+```text
+DEVICE A = READY
+DEVICE B = READY FOR SOFTWARE TESTING
+TWO-ENDPOINT_ADB = PASS
+TWO-ENDPOINT SOFTWARE TESTING = READY
+PHYSICAL TWO-DEVICE TESTING = BLOCKED
+ADB STATUS = PASS
+WINDOWS BUILD = PASS
+DEBUG APK INSTALL A = PASS
+DEBUG APK INSTALL B = PASS
+APP LAUNCH A = PASS
+APP LAUNCH B = PASS
+LOGCAT A = PASS
+LOGCAT B = PASS
+MICROPHONE A = PASS
+MICROPHONE B = PARTIAL — manual permission acceptance required
+```
+
+No source code or product architecture was modified for this setup. No release build, model/dataset download, AWS action, or training was performed.
