@@ -1,0 +1,191 @@
+{
+  "encoder_model_quantized.onnx": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/onnx/encoder_model_quantized.onnx",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 419120483,
+    "sha256": "5cde664eacba07a62f198857ec6c06e09572b1ebb77c8137f1fa99ac604a3a28",
+    "downloaded_utc": "2026-09-01T11:50:33Z",
+    "label": "encoder_model_quantized.onnx"
+  },
+  "decoder_with_past_model_quantized.onnx": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/onnx/decoder_with_past_model_quantized.onnx",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 445006987,
+    "sha256": "374293cb4bb59cd29810851a7cfbc568accb8efdc1a953ac04722e30adaf2d0b",
+    "downloaded_utc": "2026-09-01T11:51:12Z",
+    "label": "decoder_with_past_model_quantized.onnx"
+  },
+  "tokenizer.json": {
+    "url": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/tokenizer.json",
+    "size_bytes": 17331224,
+    "sha256": "8ac789ad7dabea44d41537822d48c516ba358374c51813e2cba78c006e150c94",
+    "downloaded_utc": "2026-09-01T11:59:23Z",
+    "label": "tokenizer.json"
+  },
+  "sentencepiece.bpe.model": {
+    "url": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/sentencepiece.bpe.model",
+    "size_bytes": 4852054,
+    "sha256": "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a",
+    "downloaded_utc": "2026-09-01T11:59:26Z",
+    "label": "sentencepiece.bpe.model"
+  },
+  "decoder_model_quantized.onnx": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/onnx/decoder_model_quantized.onnx",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 470533055,
+    "sha256": "ddea619b640379609719becf91a488c5e6ce4c4b2052efbb5388edaed465a552",
+    "downloaded_utc": "2026-09-01T11:51:11Z",
+    "label": "decoder_model_quantized.onnx"
+  },
+  "tokenizer_config.json": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/tokenizer_config.json",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 544,
+    "sha256": "ddf411c9f790d081e72de76bb8e8b714d74e160e61bc10c9bd8f56022dcd7fd7",
+    "downloaded_utc": "2026-09-01T11:52:29Z",
+    "label": "tokenizer_config.json"
+  },
+  "config.json": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/config.json",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 873,
+    "sha256": "52f035acb54ac80e5ef7fe78d6967f8ddf8e8799f078d1a92a2c8168d8ff4a20",
+    "downloaded_utc": "2026-09-01T11:52:30Z",
+    "label": "config.json"
+  },
+  "generation_config.json": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/generation_config.json",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 189,
+    "sha256": "1ce846259ae04c572ae1863e358534bbc376ff3d3f100b1494feda6200b51de8",
+    "downloaded_utc": "2026-09-01T11:52:31Z",
+    "label": "generation_config.json"
+  },
+  "special_tokens_map.json": {
+    "url": "hf://Xenova/nllb-200-distilled-600M@261c31d1a5732c67cdd16d80e8d6088507c7ccea/special_tokens_map.json",
+    "revision": "261c31d1a5732c67cdd16d80e8d6088507c7ccea",
+    "repo": "Xenova/nllb-200-distilled-600M",
+    "size_bytes": 3548,
+    "sha256": "992bd4ed610d644d6823081937bcc91bb8878dd556cea4ae5327f2480361330e",
+    "downloaded_utc": "2026-09-01T11:52:31Z",
+    "label": "special_tokens_map.json"
+  },
+  "encoder_model_fp16.onnx": {
+    "url": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/encoder_model_fp16.onnx",
+    "size_bytes": 829418829,
+    "sha256": "cd97975bc15c42f1e81990d6d12b91b29c8ee7914ed174fe6dc246545451aa96",
+    "downloaded_utc": "2026-09-01T12:29:51Z",
+    "label": "encoder_model_fp16.onnx"
+  },
+  "decoder_with_past_model_fp16.onnx": {
+    "url": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_with_past_model_fp16.onnx",
+    "size_bytes": 879951078,
+    "sha256": "7cc04c98db49e532dbfa5aa9c8b31e01375faea1a58de89826c3b6ce199669ea",
+    "downloaded_utc": "2026-09-01T12:31:03Z",
+    "label": "decoder_with_past_model_fp16.onnx"
+  },
+  "decoder_model_fp16.onnx": {
+    "url": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_model_fp16.onnx",
+    "size_bytes": 930453274,
+    "sha256": "ca4c8cea6faf3acfec6ac9a8e2dbcb12deb95617e39a3eeeabc575c41e9ed5a6",
+    "downloaded_utc": "2026-09-01T12:45:09Z",
+    "label": "decoder_model_fp16.onnx"
+  },
+  "decoder_model_merged_quantized.onnx": {
+    "url": "https://huggingface.co/Xenova/nllb-200-distilled-600M/resolve/main/onnx/decoder_model_merged_quantized.onnx",
+    "size_bytes": 475505771,
+    "sha256": "dd66608c2a4194e78f95548fa0e64f24302303698c5b09fa8e1f9e16ec00676b",
+    "downloaded_utc": "2026-09-01T12:58:58Z",
+    "label": "decoder_model_merged_quantized.onnx"
+  },
+  "vits-piper-en_US-lessac-medium.tar.bz2": {
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-en_US-lessac-medium.tar.bz2",
+    "size_bytes": 67230653,
+    "sha256": "9e3febfacf0abf4270172d2958bcec246032b7e88efc2720840cc80c93de334e",
+    "downloaded_utc": "2026-09-01T13:29:17Z",
+    "label": "vits-piper-en_US-lessac-medium.tar.bz2"
+  },
+  "vits-piper-hi_IN-priyamvada-medium.tar.bz2": {
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/vits-piper-hi_IN-priyamvada-medium.tar.bz2",
+    "size_bytes": 67240610,
+    "sha256": "399d91cc97eb288725633261f26b715f9a971e3bf7ec4fa1d7910cd0080d37eb",
+    "downloaded_utc": "2026-09-01T13:29:25Z",
+    "label": "vits-piper-hi_IN-priyamvada-medium.tar.bz2"
+  },
+  "espeak-ng-data.tar.bz2": {
+    "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/tts-models/espeak-ng-data.tar.bz2",
+    "size_bytes": 7252012,
+    "sha256": "4135ccf82e1f40613491c0874d4945ae9e9c7840933d8e25a6f9e003d9ebf533",
+    "downloaded_utc": "2026-09-01T13:29:33Z",
+    "label": "espeak-ng-data.tar.bz2"
+  },
+  "ct2_nllb_model.bin": {
+    "repo": "osa911/nllb-200-distilled-600M-ct2-int8",
+    "revision": "46858753dbaf8eb5e21bb6f0037c3b90851e090a",
+    "file": "model.bin",
+    "url": "hf://osa911/nllb-200-distilled-600M-ct2-int8@46858753dbaf8eb5e21bb6f0037c3b90851e090a/model.bin",
+    "size_bytes": 619704329,
+    "sha256": "ca3362e6e81906c0cf9c33bd6917674222c71d69617d0afb18507ce0b6c2e2e8",
+    "downloaded_utc": "2026-09-01T14:24:23Z"
+  },
+  "ct2_nllb_config.json": {
+    "repo": "osa911/nllb-200-distilled-600M-ct2-int8",
+    "revision": "46858753dbaf8eb5e21bb6f0037c3b90851e090a",
+    "file": "config.json",
+    "url": "hf://osa911/nllb-200-distilled-600M-ct2-int8@46858753dbaf8eb5e21bb6f0037c3b90851e090a/config.json",
+    "size_bytes": 223,
+    "sha256": "8f6496adfc930cbfecbe8281112197705c488fab47d34b4829b06d7f478909af",
+    "downloaded_utc": "2026-09-01T14:24:24Z"
+  },
+  "ct2_nllb_shared_vocabulary.json": {
+    "repo": "osa911/nllb-200-distilled-600M-ct2-int8",
+    "revision": "46858753dbaf8eb5e21bb6f0037c3b90851e090a",
+    "file": "shared_vocabulary.json",
+    "url": "hf://osa911/nllb-200-distilled-600M-ct2-int8@46858753dbaf8eb5e21bb6f0037c3b90851e090a/shared_vocabulary.json",
+    "size_bytes": 5921176,
+    "sha256": "af53bfd0e6f726209e7325e45b87ab3b14e5856f7d42d7b9be91de3287c45267",
+    "downloaded_utc": "2026-09-01T14:24:25Z"
+  },
+  "ct2_nllb_sentencepiece.bpe.model": {
+    "repo": "osa911/nllb-200-distilled-600M-ct2-int8",
+    "revision": "46858753dbaf8eb5e21bb6f0037c3b90851e090a",
+    "file": "sentencepiece.bpe.model",
+    "url": "hf://osa911/nllb-200-distilled-600M-ct2-int8@46858753dbaf8eb5e21bb6f0037c3b90851e090a/sentencepiece.bpe.model",
+    "size_bytes": 4852054,
+    "sha256": "14bb8dfb35c0ffdea7bc01e56cea38b9e3d5efcdcb9c251d6b40538e1aab555a",
+    "downloaded_utc": "2026-09-01T14:24:27Z"
+  },
+  "mms_ta_model.onnx": {
+    "repo": "willwade/mms-tts-multilingual-models-onnx",
+    "revision": "709a74aad80a840eb57f767a7f5d155aaad1ac7b",
+    "file": "tam/model.onnx",
+    "url": "hf://willwade/mms-tts-multilingual-models-onnx@709a74aad80a840eb57f767a7f5d155aaad1ac7b/tam/model.onnx",
+    "size_bytes": 114032312,
+    "sha256": "c86cf0a0657d57577d937b806d7b63d638cff522b5687cb650dde24bc71c5c88",
+    "downloaded_utc": "2026-09-01T14:36:04Z"
+  },
+  "mms_ta_tokens.txt": {
+    "repo": "willwade/mms-tts-multilingual-models-onnx",
+    "revision": "709a74aad80a840eb57f767a7f5d155aaad1ac7b",
+    "file": "tam/tokens.txt",
+    "url": "hf://willwade/mms-tts-multilingual-models-onnx@709a74aad80a840eb57f767a7f5d155aaad1ac7b/tam/tokens.txt",
+    "size_bytes": 375,
+    "sha256": "0b3f692319bb5fae8658e2f84bf252bca92450d0207bbba7273caa1a182d81b8",
+    "downloaded_utc": "2026-09-01T14:36:05Z"
+  },
+  "mms_ta_sample.wav": {
+    "repo": "willwade/mms-tts-multilingual-models-onnx",
+    "revision": "709a74aad80a840eb57f767a7f5d155aaad1ac7b",
+    "file": "tam/sample.wav",
+    "url": "hf://willwade/mms-tts-multilingual-models-onnx@709a74aad80a840eb57f767a7f5d155aaad1ac7b/tam/sample.wav",
+    "size_bytes": 121388,
+    "sha256": "ce39e5eb554c138c85eda01dce4caeaa262350e727173a81cc19a7260e6ece12",
+    "downloaded_utc": "2026-09-01T14:36:06Z"
+  }
+}
