@@ -1,0 +1,542 @@
+{
+  "load_time_s": 1.604,
+  "base_rss_mb": 30.5,
+  "loaded_rss_mb": 727.2,
+  "languages": [
+    "en",
+    "hi",
+    "ta",
+    "te",
+    "bn",
+    "mr",
+    "gu",
+    "kn",
+    "ml",
+    "pa"
+  ],
+  "directions": {
+    "en->hi": {
+      "median_s": 0.232,
+      "p95_s": 0.454,
+      "latencies_s": [
+        0.163,
+        0.214,
+        0.239,
+        0.171,
+        0.261,
+        0.162,
+        0.191,
+        0.454,
+        0.31,
+        0.232
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "मेरी मदद करो."
+        },
+        {
+          "src": "I need help.",
+          "out": "मुझे मदद की जरूरत है."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "कृपया मेरे स्थान पर आएं।"
+        },
+        {
+          "src": "Where are you?",
+          "out": "तुम कहाँ हो?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "मुझे एक डॉक्टर की जरूरत है."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "अस्पताल कहाँ है?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "मैं खतरे में हूँ."
+        },
+        {
+          "src": "I need water.",
+          "out": "मुझे पानी चाहिए।"
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "मैं बैठक बिंदु पर हूँ।"
+        },
+        {
+          "src": "Call the police.",
+          "out": "पुलिस को बुलाओ."
+        }
+      ]
+    },
+    "en->ta": {
+      "median_s": 0.257,
+      "p95_s": 0.342,
+      "latencies_s": [
+        0.216,
+        0.201,
+        0.342,
+        0.19,
+        0.281,
+        0.257,
+        0.215,
+        0.182,
+        0.307,
+        0.279
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "எனக்கு உதவுங்கள்."
+        },
+        {
+          "src": "I need help.",
+          "out": "எனக்கு உதவி தேவை."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "தயவு செய்து என் இருப்பிடத்திற்கு வாருங்கள்."
+        },
+        {
+          "src": "Where are you?",
+          "out": "நீ எங்கே இருக்கிறாய்?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "எனக்கு ஒரு மருத்துவர் தேவை."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "மருத்துவமனை எங்கே?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "நான் ஆபத்தில் இருக்கிறேன்."
+        },
+        {
+          "src": "I need water.",
+          "out": "எனக்கு தண்ணீர் தேவை."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "நான் சந்திப்பு இடத்தில் இருக்கிறேன்."
+        },
+        {
+          "src": "Call the police.",
+          "out": "காவல்துறையை அழைக்கவும்."
+        }
+      ]
+    },
+    "en->te": {
+      "median_s": 0.249,
+      "p95_s": 0.336,
+      "latencies_s": [
+        0.249,
+        0.18,
+        0.336,
+        0.228,
+        0.252,
+        0.274,
+        0.238,
+        0.189,
+        0.269,
+        0.244
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "నాకు సహాయం."
+        },
+        {
+          "src": "I need help.",
+          "out": "నేను సహాయం అవసరం."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "దయచేసి నా స్థానానికి రండి."
+        },
+        {
+          "src": "Where are you?",
+          "out": "మీరు ఎక్కడ ఉన్నారు?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "నేను ఒక వైద్యుడు అవసరం."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "ఆసుపత్రి ఎక్కడ ఉంది?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "నేను ప్రమాదంలో ఉన్నాను."
+        },
+        {
+          "src": "I need water.",
+          "out": "నేను నీరు అవసరం."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "నేను సమావేశం పాయింట్ వద్ద ఉన్నాను."
+        },
+        {
+          "src": "Call the police.",
+          "out": "పోలీసులకు కాల్."
+        }
+      ]
+    },
+    "en->bn": {
+      "median_s": 0.242,
+      "p95_s": 0.357,
+      "latencies_s": [
+        0.181,
+        0.209,
+        0.293,
+        0.227,
+        0.318,
+        0.242,
+        0.22,
+        0.215,
+        0.357,
+        0.283
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "আমাকে সাহায্য করো।"
+        },
+        {
+          "src": "I need help.",
+          "out": "আমার সাহায্য দরকার।"
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "দয়া করে আমার অবস্থানে আসুন।"
+        },
+        {
+          "src": "Where are you?",
+          "out": "তুমি কোথায়?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "আমার ডাক্তার দরকার।"
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "হাসপাতাল কোথায়?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "আমি বিপদে আছি।"
+        },
+        {
+          "src": "I need water.",
+          "out": "আমার পানি দরকার।"
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "আমি মিটিং পয়েন্টে আছি।"
+        },
+        {
+          "src": "Call the police.",
+          "out": "পুলিশকে ফোন করো।"
+        }
+      ]
+    },
+    "en->mr": {
+      "median_s": 0.249,
+      "p95_s": 0.316,
+      "latencies_s": [
+        0.215,
+        0.249,
+        0.316,
+        0.19,
+        0.273,
+        0.249,
+        0.211,
+        0.206,
+        0.271,
+        0.184
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "मला मदत करा."
+        },
+        {
+          "src": "I need help.",
+          "out": "मला मदत हवी आहे."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "प्लीज माझ्या जागी ये."
+        },
+        {
+          "src": "Where are you?",
+          "out": "तू कुठे आहेस?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "मला डॉक्टरांची गरज आहे."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "रुग्णालय कुठे आहे?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "मला धोका आहे."
+        },
+        {
+          "src": "I need water.",
+          "out": "मला पाणी हवे आहे."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "मी भेटीच्या ठिकाणी आहे."
+        },
+        {
+          "src": "Call the police.",
+          "out": "पोलिसांना फोन करा."
+        }
+      ]
+    },
+    "en->gu": {
+      "median_s": 0.244,
+      "p95_s": 0.31,
+      "latencies_s": [
+        0.174,
+        0.233,
+        0.283,
+        0.16,
+        0.255,
+        0.215,
+        0.232,
+        0.244,
+        0.27,
+        0.31
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "મને મદદ કરો."
+        },
+        {
+          "src": "I need help.",
+          "out": "મને મદદની જરૂર છે."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "કૃપા કરીને મારા સ્થાન પર આવો."
+        },
+        {
+          "src": "Where are you?",
+          "out": "તમે ક્યાં છો?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "મને ડૉક્ટરની જરૂર છે."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "હોસ્પિટલ ક્યાં છે?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "હું ખતરામાં છું."
+        },
+        {
+          "src": "I need water.",
+          "out": "મને પાણીની જરૂર છે."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "હું બેઠક બિંદુ પર છું."
+        },
+        {
+          "src": "Call the police.",
+          "out": "પોલીસને બોલાવો."
+        }
+      ]
+    },
+    "en->kn": {
+      "median_s": 0.22,
+      "p95_s": 0.315,
+      "latencies_s": [
+        0.193,
+        0.186,
+        0.315,
+        0.166,
+        0.22,
+        0.186,
+        0.208,
+        0.246,
+        0.294,
+        0.239
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "ನನಗೆ ಸಹಾಯ ಮಾಡಿ."
+        },
+        {
+          "src": "I need help.",
+          "out": "ನನಗೆ ಸಹಾಯ ಬೇಕು."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "ದಯವಿಟ್ಟು ನನ್ನ ಸ್ಥಳಕ್ಕೆ ಬನ್ನಿ."
+        },
+        {
+          "src": "Where are you?",
+          "out": "ನೀವು ಎಲ್ಲಿದ್ದೀರಿ?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "ನನಗೆ ವೈದ್ಯರ ಅಗತ್ಯವಿದೆ."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "ಆಸ್ಪತ್ರೆ ಎಲ್ಲಿದೆ?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "ನಾನು ಅಪಾಯದಲ್ಲಿದ್ದೇನೆ."
+        },
+        {
+          "src": "I need water.",
+          "out": "ನನಗೆ ನೀರು ಬೇಕು."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "ನಾನು ಸಭೆಯ ಸ್ಥಳದಲ್ಲಿದ್ದೇನೆ."
+        },
+        {
+          "src": "Call the police.",
+          "out": "ಪೊಲೀಸರಿಗೆ ಕರೆ ಮಾಡಿ."
+        }
+      ]
+    },
+    "en->ml": {
+      "median_s": 0.207,
+      "p95_s": 0.363,
+      "latencies_s": [
+        0.179,
+        0.194,
+        0.288,
+        0.175,
+        0.207,
+        0.212,
+        0.197,
+        0.183,
+        0.363,
+        0.263
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "എന്നെ സഹായിക്കൂ."
+        },
+        {
+          "src": "I need help.",
+          "out": "എനിക്ക് സഹായം വേണം."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "ദയവായി എന്റെ സ്ഥലത്തേക്ക് വരൂ."
+        },
+        {
+          "src": "Where are you?",
+          "out": "നീ എവിടെയാ?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "എനിക്ക് ഒരു ഡോക്ടറെ വേണം."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "ആശുപത്രി എവിടെയാണ്?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "ഞാന് അപകടത്തിലാണ്."
+        },
+        {
+          "src": "I need water.",
+          "out": "എനിക്ക് വെള്ളം വേണം."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "ഞാന് കൂടിക്കാഴ്ച സ്ഥലത്താണ്."
+        },
+        {
+          "src": "Call the police.",
+          "out": "പോലീസിനെ വിളിക്കൂ."
+        }
+      ]
+    },
+    "en->pa": {
+      "median_s": 0.241,
+      "p95_s": 0.375,
+      "latencies_s": [
+        0.18,
+        0.213,
+        0.266,
+        0.225,
+        0.253,
+        0.199,
+        0.274,
+        0.241,
+        0.375,
+        0.214
+      ],
+      "outputs": [
+        {
+          "src": "Help me.",
+          "out": "ਮੇਰੀ ਮਦਦ ਕਰੋ."
+        },
+        {
+          "src": "I need help.",
+          "out": "ਮੈਨੂੰ ਮਦਦ ਦੀ ਲੋੜ ਹੈ."
+        },
+        {
+          "src": "Please come to my location.",
+          "out": "ਕਿਰਪਾ ਕਰਕੇ ਮੇਰੇ ਸਥਾਨ 'ਤੇ ਆਓ."
+        },
+        {
+          "src": "Where are you?",
+          "out": "ਤੁਸੀਂ ਕਿੱਥੇ ਹੋ?"
+        },
+        {
+          "src": "I need a doctor.",
+          "out": "ਮੈਨੂੰ ਇੱਕ ਡਾਕਟਰ ਦੀ ਲੋੜ ਹੈ."
+        },
+        {
+          "src": "Where is the hospital?",
+          "out": "ਹਸਪਤਾਲ ਕਿੱਥੇ ਹੈ?"
+        },
+        {
+          "src": "I am in danger.",
+          "out": "ਮੈਂ ਖ਼ਤਰੇ ਵਿੱਚ ਹਾਂ।"
+        },
+        {
+          "src": "I need water.",
+          "out": "ਮੈਨੂੰ ਪਾਣੀ ਦੀ ਲੋੜ ਹੈ."
+        },
+        {
+          "src": "I am at the meeting point.",
+          "out": "ਮੈਂ ਮੀਟਿੰਗ ਬਿੰਦੂ 'ਤੇ ਹਾਂ।"
+        },
+        {
+          "src": "Call the police.",
+          "out": "ਪੁਲਿਸ ਨੂੰ ਬੁਲਾਓ."
+        }
+      ]
+    }
+  },
+  "peak_rss_mb": 725.0
+}

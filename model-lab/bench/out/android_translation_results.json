@@ -1,0 +1,5 @@
+{
+  "status": "NOT_MEASURED",
+  "reason": "Physical Android ARM64 device and Android SDK/ADB environment not connected on Laptop 2 (Model Lab host)",
+  "required_environment": "Physical ARM64 device connected via ADB on Laptop 1"
+}
