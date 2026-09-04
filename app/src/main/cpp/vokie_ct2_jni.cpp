@@ -43,7 +43,10 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_vokie_translation_Ctranslate2Nativ
     if (!src || !tgt) throw std::invalid_argument("Unsupported NLLB language");
     std::vector<std::string> pieces; auto status = session->tokenizer.Encode(value, &pieces); if (!status.ok()) throw std::runtime_error(status.ToString());
     pieces.insert(pieces.begin(), src); pieces.emplace_back("</s>");
-    ctranslate2::TranslationOptions options; options.beam_size = 4; options.max_decoding_length = 256;
+    ctranslate2::TranslationOptions options;
+    // Beam 1 (greedy) for short rescue sentences; beam 4 only for longer text.
+    options.beam_size = (pieces.size() <= 20) ? 1 : 4;
+    options.max_decoding_length = 256;
     std::lock_guard<std::mutex> lock(session->mutex);
     auto result = session->translator->translate_batch({pieces}, {{tgt}}, options);
     auto output = result.at(0).hypotheses.at(0); if (!output.empty() && output.front() == tgt) output.erase(output.begin());

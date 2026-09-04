@@ -132,18 +132,16 @@ Java_com_vokie_stt_WhisperNative_nativeTranscribe(
     int benchmark_threads = requested_threads;
     bool benchmark_no_timestamps = false;
     int benchmark_audio_ctx = 0;
+    // audio_ctx = 0 means use full model context (1500 for whisper-tiny).
+    // Dynamic audio_ctx was attempted but causes decoder degeneration
+    // (repetitive garbage output) on whisper-tiny even with a 128-frame
+    // floor. Reverted to full context until a model upgrade enables it.
+    benchmark_audio_ctx = 0;
 #ifdef VOKIE_DEBUG_WHISPER_BENCHMARKS
     benchmark_threads = debug_property_int("debug.vokie.whisper_threads", requested_threads);
     benchmark_no_timestamps = debug_property_int("debug.vokie.whisper_no_timestamps", 0) == 1;
-    // Debug-only replay benchmark. Each encoder output frame represents 20 ms
-    // (320 PCM samples at 16 kHz); this is capped by the model context below.
-    // It is intentionally not a production policy until Device A replay evidence
-    // establishes an accuracy-safe setting.
-    if (debug_property_int("debug.vokie.whisper_dynamic_audio_ctx", 0) == 1) {
-        benchmark_audio_ctx = std::max(1, (static_cast<int>(sample_count) + 319) / 320);
-    } else {
-        benchmark_audio_ctx = debug_property_int("debug.vokie.whisper_audio_ctx", 0);
-    }
+    int override_ctx = debug_property_int("debug.vokie.whisper_audio_ctx", 0);
+    if (override_ctx > 0) benchmark_audio_ctx = override_ctx;
 #endif
     if (benchmark_audio_ctx > whisper_n_audio_ctx(context)) benchmark_audio_ctx = whisper_n_audio_ctx(context);
     params.audio_ctx = benchmark_audio_ctx;
