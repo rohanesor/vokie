@@ -38,6 +38,7 @@ class WhisperSttEngine(
     private val recorder = MicrophoneAudioRecorder(context, scope, vadEngine)
     private val stateMachine = SttStateMachine()
     private val inferenceMutex = Mutex()
+    @Volatile private var inferenceStartListener: (() -> Unit)? = null
     private val initializationMutex = Mutex()
     private val processing = AtomicBoolean(false)
     // Set synchronously by VAD/manual stop before inference is dispatched.
@@ -131,6 +132,8 @@ class WhisperSttEngine(
         }
     }
 
+    override fun setInferenceStartListener(listener: (() -> Unit)?) { inferenceStartListener = listener }
+
     override suspend fun transcribe(audio: FloatArray, language: SttLanguage, audioDurationMs: Long): SttResult {
         require(audio.isNotEmpty() && audio.size <= WHISPER_SAMPLE_RATE * 30) { "Audio must be between 1 sample and 30 seconds" }
         require(audioDurationMs > 0) { "Audio duration must be positive" }
@@ -139,6 +142,7 @@ class WhisperSttEngine(
         if (handle == 0L) throw SttException(SttErrorCode.STT_INITIALIZATION_FAILED, "STT is not initialized")
         return inferenceMutex.withLock {
             val started = SystemClock.elapsedRealtime()
+            inferenceStartListener?.invoke()
             VokieLog.stt("whisperStartTimestamp=$started requestedLanguage=${language.whisperCode} inputSamples=${audio.size} inputDurationMs=$audioDurationMs")
             val timedOut = AtomicBoolean(false)
             val watchdog = scope.launch(Dispatchers.Default) {

@@ -99,6 +99,12 @@ class ContinuousTurnManager(
     @Volatile private var lastResultTimestamp: Long = Long.MIN_VALUE
     private var collectorJob: Job? = null
 
+    init {
+        // This callback is invoked by Whisper immediately before native inference,
+        // not when microphone capture merely begins.
+        stt.setInferenceStartListener { currentTurnId?.let { timing?.sttStart(it) } }
+    }
+
     suspend fun start(mode: TurnMode, language: SttLanguage, profile: UserLanguageProfile) = mutex.withLock {
         if (_state.value !in setOf(TurnState.IDLE, TurnState.STOPPED, TurnState.ERROR)) return@withLock
         this.mode = mode
@@ -109,7 +115,6 @@ class ContinuousTurnManager(
         collectorJob?.cancel()
         collectorJob = scope.launch { collectStt() }
         beginTurn()
-        currentTurnId?.let { timing?.sttStart(it) }
         stt.start(language, profile, finalizeOnVad = (mode == TurnMode.CONTINUOUS))
     }
 

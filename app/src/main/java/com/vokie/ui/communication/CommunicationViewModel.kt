@@ -99,7 +99,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
                 if (event is TurnEvent.Sentence) {
                     runCatching {
                         val message = repository.createMessage(event.text, app.deviceId, effectivePeerId.value, event.language)
-                        app.turnTiming.packetCreated(event.turnId, message.id)
+                        app.turnTiming.associateMessage(event.turnId, message.id)
                     }.onFailure { _error.value = it.message ?: "Voice message could not be queued" }
                 }
             }

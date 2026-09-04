@@ -70,6 +70,8 @@ class TransportManager(
     /** Single queue entry point: encode here, then only bytes cross PacketTransport. */
     suspend fun sendMessage(message: Message): SendResult {
         val frames = PacketV2.fromMessage(message)
+        // T3 is emitted only after PacketV2 has actually been created.
+        timing?.packetCreated(message.id, message.sequenceNumber)
         val transport = activePacketTransport()
         val peer = connectedPeerId.value ?: message.receiverId ?: "unknown"
         val started = android.os.SystemClock.elapsedRealtime()

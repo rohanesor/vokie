@@ -103,6 +103,8 @@ interface SttEngine {
     suspend fun start(language: SttLanguage, preferredLanguage: UserLanguageProfile, finalizeOnVad: Boolean = true)
     suspend fun stop()
     suspend fun transcribe(audio: FloatArray, language: SttLanguage, audioDurationMs: Long): SttResult
+    /** Debug/benchmark hook at the actual inference boundary; production behavior is unchanged. */
+    fun setInferenceStartListener(listener: (() -> Unit)?) {}
     fun release()
 }
 

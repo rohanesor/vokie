@@ -48,7 +48,20 @@ class TurnTimingRecorder(private val nowNs: () -> Long = { SystemClock.elapsedRe
         updateTurn(turnId) { it.copy(t2SttCompleteNs = it.t2SttCompleteNs ?: nowNs()) }
         event("T2_STT_COMPLETE", turnId = turnId, extra = mapOf("transcript" to transcript, "audio_duration_ms" to audioDurationMs))
     }
-    @Synchronized fun packetCreated(turnId: String, messageId: String) { turnByMessage[messageId] = turnId; updateTurn(turnId) { it.copy(messageId=messageId, t3PacketCreatedNs=it.t3PacketCreatedNs ?: nowNs()) }; event("T3_PACKET_CREATE", turnId, messageId) }
+    @Synchronized fun associateMessage(turnId: String, messageId: String) {
+        turnByMessage[messageId] = turnId
+        updateTurn(turnId) { it.copy(messageId = messageId) }
+    }
+    @Synchronized fun packetCreated(messageId: String, sequenceNumber: Long? = null) {
+        val turnId = turnByMessage[messageId]
+        updateMessage(messageId) { it.copy(t3PacketCreatedNs = it.t3PacketCreatedNs ?: nowNs()) }
+        event("T3_PACKET_CREATE", turnId, messageId, mapOf("sequence_number" to sequenceNumber))
+    }
+    /** Compatibility overload for existing C2 tests; production uses the post-encode overload. */
+    @Synchronized fun packetCreated(turnId: String, messageId: String) {
+        associateMessage(turnId, messageId)
+        packetCreated(messageId, null)
+    }
     @Synchronized fun transportTx(messageId: String, sequenceNumber: Long? = null) { updateMessage(messageId) { it.copy(transportTxNs=it.transportTxNs ?: nowNs()) }; event("T4_TRANSPORT_TX", messageId = messageId, extra = mapOf("sequence_number" to sequenceNumber)) }
     @Synchronized fun packetReceived(messageId: String, sequenceNumber: Long? = null) { updateMessage(messageId) { it.copy(t4PacketReceivedNs=it.t4PacketReceivedNs ?: nowNs()) }; event("T5_TRANSPORT_RX", messageId = messageId, extra = mapOf("sequence_number" to sequenceNumber)) }
     @Synchronized fun translationStart(messageId: String, source: String? = null, target: String? = null) { updateMessage(messageId) { it.copy(translationStartNs=it.translationStartNs ?: nowNs()) }; event("T6_TRANSLATION_START", messageId = messageId, extra = mapOf("source_language" to source, "target_language" to target)) }
@@ -72,9 +85,11 @@ class TurnTimingRecorder(private val nowNs: () -> Long = { SystemClock.elapsedRe
         json.put("event", name)
         json.put("timestamp_ns", nowNs())
         json.put("run_id", messageId ?: turnId ?: JSONObject.NULL)
-        json.put("device_role", if (turnId?.startsWith("receiver:") == true) "receiver" else "sender")
+        val mappedTurn = turnId ?: messageId?.let(turnByMessage::get)
+        val role = if (mappedTurn?.startsWith("receiver:") == true || (turnId == null && messageId != null && mappedTurn == null)) "receiver" else "sender"
+        json.put("device_role", role)
         json.put("clock_domain", "device_elapsedRealtimeNanos")
-        json.put("turn_id", turnId ?: JSONObject.NULL)
+        json.put("turn_id", turnId ?: mappedTurn ?: JSONObject.NULL)
         json.put("message_id", messageId ?: JSONObject.NULL)
         extra.forEach { (key, value) -> json.put(key, value ?: JSONObject.NULL) }
         runCatching { json.toString() }.getOrNull()?.let(VokieLog::timing)
