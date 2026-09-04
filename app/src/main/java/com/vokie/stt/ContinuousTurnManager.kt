@@ -97,12 +97,13 @@ class ContinuousTurnManager(
     @Volatile private var currentTurnId: String? = null
     @Volatile private var currentTurnStartedAtMs: Long = 0L
     @Volatile private var lastResultTimestamp: Long = Long.MIN_VALUE
+    @Volatile private var processingTurnId: String? = null
     private var collectorJob: Job? = null
 
     init {
         // This callback is invoked by Whisper immediately before native inference,
         // not when microphone capture merely begins.
-        stt.setInferenceStartListener { currentTurnId?.let { timing?.sttStart(it) } }
+        stt.setInferenceStartListener { turnId -> turnId?.let { timing?.sttStart(it) } }
     }
 
     suspend fun start(mode: TurnMode, language: SttLanguage, profile: UserLanguageProfile) = mutex.withLock {
@@ -115,6 +116,7 @@ class ContinuousTurnManager(
         collectorJob?.cancel()
         collectorJob = scope.launch { collectStt() }
         beginTurn()
+        stt.setInferenceTurnId(currentTurnId)
         stt.start(language, profile, finalizeOnVad = (mode == TurnMode.CONTINUOUS))
     }
 
@@ -138,7 +140,11 @@ class ContinuousTurnManager(
         stt.status.collect { status ->
             when (status.state) {
                 SttState.LISTENING -> if (_state.value != TurnState.LISTENING) _state.value = TurnState.LISTENING
-                SttState.PROCESSING -> { _state.value = TurnState.PROCESSING; currentTurnId?.let { timing?.endpoint(it) } }
+                SttState.PROCESSING -> {
+                    _state.value = TurnState.PROCESSING
+                    processingTurnId = currentTurnId
+                    currentTurnId?.let { timing?.endpoint(it) }
+                }
                 SttState.RESULT -> status.result?.let { processResult(it) }
                 SttState.ERROR -> {
                     val turnId = currentTurnId ?: return@collect
@@ -157,7 +163,12 @@ class ContinuousTurnManager(
     private suspend fun processResult(result: SttResult) {
         if (result.timestamp == lastResultTimestamp) return
         lastResultTimestamp = result.timestamp
-        val turnId = currentTurnId ?: return
+        val turnId = processingTurnId ?: currentTurnId ?: return
+        // A late result from an invalidated capture must never be attached to a new turn.
+        if (turnId != currentTurnId) {
+            processingTurnId = null
+            return
+        }
         timing?.sttComplete(turnId, result.text, result.audioDurationMs)
         val sentences = segmenter.split(result.text, result.language.messageLanguage)
         sentences.forEachIndexed { index, sentence ->
@@ -172,8 +183,10 @@ class ContinuousTurnManager(
             completedAtMs = clockMs(),
         ))
         _state.value = TurnState.SENTENCE_READY
+        processingTurnId = null
         if (mode == TurnMode.CONTINUOUS && !stopRequested.get()) {
             beginTurn()
+            stt.setInferenceTurnId(currentTurnId)
             stt.start(language, profile, finalizeOnVad = true)
         } else {
             _state.value = TurnState.STOPPED

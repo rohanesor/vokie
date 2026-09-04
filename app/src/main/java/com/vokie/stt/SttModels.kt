@@ -104,7 +104,9 @@ interface SttEngine {
     suspend fun stop()
     suspend fun transcribe(audio: FloatArray, language: SttLanguage, audioDurationMs: Long): SttResult
     /** Debug/benchmark hook at the actual inference boundary; production behavior is unchanged. */
-    fun setInferenceStartListener(listener: (() -> Unit)?) {}
+    fun setInferenceStartListener(listener: ((turnId: String?) -> Unit)?) {}
+    /** Binds the next inference to the current turn without changing STT semantics. */
+    fun setInferenceTurnId(turnId: String?) {}
     fun release()
 }
 

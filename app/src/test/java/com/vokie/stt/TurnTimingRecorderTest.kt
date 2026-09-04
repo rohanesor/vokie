@@ -18,4 +18,12 @@ class TurnTimingRecorderTest {
     @Test fun receiverOnlyTimelineCorrelatesByMessage() { val r=recorder(); r.packetReceived("m"); tick(); r.translationComplete("m"); assertEquals(10L,r.snapshotForMessage("m")!!.translationLatencyMs); assertEquals(null,r.snapshotForMessage("m")!!.turnId) }
     @Test fun ttsFailureIsExplicit() { val r=recorder(); r.ttsStart("m"); r.fail(null,"m",TurnTimingFailure.TTS); assertEquals(TurnTimingStatus.FAILED,r.snapshotForMessage("m")!!.status); assertEquals(TurnTimingFailure.TTS,r.snapshotForMessage("m")!!.failure) }
     @Test fun nonMonotonicDeltaIsAbsent() { val r=recorder(); now=10; r.start("t"); now=1; r.endpoint("t"); assertNull(r.snapshotForTurn("t")!!.speechDurationMs) }
+    @Test fun p19BoundariesPreserveRequiredLocalOrder() {
+        val r = recorder(); r.start("t"); tick(); r.sttStart("t"); tick(); r.sttComplete("t", "Help", 500L); tick()
+        r.associateMessage("t", "m"); r.packetCreated("m", 1L)
+        val s = r.snapshotForMessage("m")!!
+        assertTrue(s.t0SpeechStartNs!! < s.sttStartNs!!)
+        assertTrue(s.sttStartNs!! < s.t2SttCompleteNs!!)
+        assertTrue(s.t2SttCompleteNs!! < s.t3PacketCreatedNs!!)
+    }
 }

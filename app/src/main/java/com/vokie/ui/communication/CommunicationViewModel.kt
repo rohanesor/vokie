@@ -19,6 +19,7 @@ import com.vokie.stt.SttStatus
 import com.vokie.stt.UserLanguageProfile
 import com.vokie.stt.resolveProductionSttLanguage
 import com.vokie.tts.*
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
@@ -63,6 +64,8 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
     private val _locationShareState = MutableStateFlow("IDLE")
+    private enum class VoiceCommand { START, STOP }
+    private val voiceCommands = Channel<VoiceCommand>(Channel.UNLIMITED)
     val locationShareState: StateFlow<String> = _locationShareState.asStateFlow()
 
     /** Peer-scoped session state from the PeerSessionManager. */
@@ -92,6 +95,20 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     }
 
     init {
+        // Serialize PTT commands so a quick release cannot execute STOP before START.
+        viewModelScope.launch {
+            for (command in voiceCommands) {
+                runCatching {
+                    when (command) {
+                        VoiceCommand.START -> {
+                            val preferred = preferredLanguage.value ?: throw IllegalStateException("Choose your language before recording.")
+                            turnManager.start(if (pushToTalkEnabled.value) TurnMode.PUSH_TO_TALK else TurnMode.CONTINUOUS, resolveProductionSttLanguage(preferred), preferred)
+                        }
+                        VoiceCommand.STOP -> turnManager.stop()
+                    }
+                }.onFailure { _error.value = it.message ?: "Voice operation failed" }
+            }
+        }
         // C2 is the sole production owner of microphone/STT turns. Sentence events replace
         // ChatScreen's former raw SttStatus RESULT enqueue observer.
         viewModelScope.launch {
@@ -144,11 +161,8 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun setDebugFastStt(enabled: Boolean) {
         if (BuildConfig.DEBUG) _debugFastSttEnabled.value = enabled
     }
-    fun startVoice() = action {
-        val preferred = preferredLanguage.value ?: throw IllegalStateException("Choose your language before recording.")
-        turnManager.start(if (pushToTalkEnabled.value) TurnMode.PUSH_TO_TALK else TurnMode.CONTINUOUS, resolveProductionSttLanguage(preferred), preferred)
-    }
-    fun stopVoice() = action { turnManager.stop() }
+    fun startVoice() { voiceCommands.trySend(VoiceCommand.START) }
+    fun stopVoice() { voiceCommands.trySend(VoiceCommand.STOP) }
     fun replayLastPcmBenchmark() = action {
         val preferred = preferredLanguage.value ?: throw IllegalStateException("Select a preferred language before replaying.")
         app.sttEngine.replayLastCaptureForBenchmark(resolveProductionSttLanguage(preferred), preferred)
