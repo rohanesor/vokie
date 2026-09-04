@@ -81,6 +81,18 @@ class SentenceSegmenter(private val terminators: Set<Char> = DEFAULT_TERMINATORS
     }
 }
 
+internal class TurnSubmissionGate(private val maxEntries: Int = 256) {
+    private val claimed = LinkedHashSet<String>()
+
+    @Synchronized
+    fun claim(turnId: String, sentenceIndex: Int): Boolean {
+        val key = "$turnId:$sentenceIndex"
+        if (!claimed.add(key)) return false
+        while (claimed.size > maxEntries) claimed.remove(claimed.first())
+        return true
+    }
+}
+
 class ContinuousTurnManager(
     private val stt: SttEngine,
     private val scope: CoroutineScope,
@@ -106,6 +118,9 @@ class ContinuousTurnManager(
      */
     private val generation = AtomicLong(0)
     private var collectorJob: Job? = null
+    // Application-scoped defensive gate. Multiple UI owners must never submit the same
+    // turn sentence twice; the key is stable turn identity, never transcript text.
+    private val submissionGate = TurnSubmissionGate()
 
     init {
         // This callback is invoked by Whisper immediately before native inference,
@@ -128,6 +143,14 @@ class ContinuousTurnManager(
         VokieLog.stt("VOICE_STATE: IDLE -> CAPTURING turn=${currentTurnId} gen=$gen")
         stt.start(language, profile, finalizeOnVad = (mode == TurnMode.CONTINUOUS))
     }
+
+    /**
+     * Atomically claims the message-submission boundary for one turn sentence.
+     * This is defensive: normal operation has one UI owner, while duplicate/lifecycle
+     * collectors receive false and cannot create a second message ID.
+     */
+    fun claimSubmission(turnId: String, sentenceIndex: Int): Boolean =
+        submissionGate.claim(turnId, sentenceIndex)
 
     /** PTT release or user cancel. Signals no further auto-restart, then finalises STT. */
     suspend fun stop() = mutex.withLock {

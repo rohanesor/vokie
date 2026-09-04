@@ -13,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.yield
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -39,6 +40,22 @@ private class FakeStt : SttEngine {
 }
 
 class ContinuousTurnManagerTest {
+    @Test fun submissionGateClaimsEachTurnSentenceExactlyOnce() {
+        val gate = TurnSubmissionGate()
+        assertTrue(gate.claim("turn-a", 0))
+        assertFalse(gate.claim("turn-a", 0))
+        assertTrue(gate.claim("turn-a", 1))
+        assertTrue(gate.claim("turn-b", 0))
+    }
+
+    @Test fun managerRejectsDuplicateSubmissionButAllowsNextTurn() {
+        val scope = CoroutineScope(SupervisorJob())
+        val manager = ContinuousTurnManager(FakeStt(), scope)
+        assertTrue(manager.claimSubmission("turn-a", 0))
+        assertFalse(manager.claimSubmission("turn-a", 0))
+        assertTrue(manager.claimSubmission("turn-b", 0))
+        scope.cancel()
+    }
     private fun harness(block: suspend TestHarness.() -> Unit) = runBlocking {
         val stt = FakeStt(); val scope = CoroutineScope(coroutineContext + SupervisorJob())
         val clock = MutableClock(); val manager = ContinuousTurnManager(stt, scope, clockMs = clock::now)

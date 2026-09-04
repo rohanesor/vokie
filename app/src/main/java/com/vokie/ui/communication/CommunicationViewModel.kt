@@ -22,8 +22,10 @@ import com.vokie.tts.*
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 class CommunicationViewModel(application: Application) : AndroidViewModel(application) {
+    private val instanceId = UUID.randomUUID().toString()
     private val app = application as VokieApplication
     private val repository = app.messageRepository
     private val manager = app.transportManager
@@ -95,6 +97,7 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     }
 
     init {
+        VokieLog.msg("VOICE_OWNER_CREATED owner=$instanceId source=CommunicationViewModel")
         // Serialize PTT commands so a quick release cannot execute STOP before START.
         viewModelScope.launch {
             for (command in voiceCommands) {
@@ -114,9 +117,13 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
         viewModelScope.launch {
             turnManager.events.collect { event ->
                 if (event is TurnEvent.Sentence) {
+                    val claimed = turnManager.claimSubmission(event.turnId, event.index)
+                    VokieLog.msg("TURN_SUBMIT_CLAIM turn_id=${event.turnId} sentence_index=${event.index} owner=$instanceId source=turn_event_sentence claimed=$claimed")
+                    if (!claimed) return@collect
                     runCatching {
                         val message = repository.createMessage(event.text, app.deviceId, effectivePeerId.value, event.language)
                         app.turnTiming.associateMessage(event.turnId, message.id)
+                        VokieLog.msg("TURN_SUBMIT turn_id=${event.turnId} message_id=${message.id} owner=$instanceId source=turn_event_sentence")
                     }.onFailure { _error.value = it.message ?: "Voice message could not be queued" }
                 }
             }
@@ -247,6 +254,11 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
         // If the currently selected peer was simulated, clear the selection.
         if (_selectedPeerId.value in simIds) _selectedPeerId.value = null
         VokieLog.rescue("DEBUG_SIMULATED_PEERS_REMOVED")
+    }
+
+    override fun onCleared() {
+        VokieLog.msg("VOICE_OWNER_CLEARED owner=$instanceId source=CommunicationViewModel")
+        super.onCleared()
     }
 
     private fun action(block: suspend () -> Unit) { viewModelScope.launch { runCatching { block() }.onSuccess { _error.value = null }.onFailure { _error.value = it.message ?: "Communication failed" } } }

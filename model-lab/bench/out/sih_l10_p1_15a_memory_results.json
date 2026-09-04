@@ -1,0 +1,98 @@
+{
+  "schema_version": 1,
+  "phase": "SIH-L10-P1.15A",
+  "status": "PASS",
+  "final_status": "READY FOR OFFICIAL FIVE-RUN BENCHMARK",
+  "scope": "Five-turn memory/readiness validation only; not the official latency benchmark",
+  "checkpoint_sha": "6055ef366317e73543c5a3a0ca36a594db8a5922",
+  "checkpoint_branch": "sih/laptop1-before-l10-p1-15a",
+  "devices": {
+    "sender": {"model": "RMX3782", "serial": "MJPVXCSG9HYL65YL", "android": 15, "abi": "arm64-v8a", "pid": 2891},
+    "receiver": {"model": "V2205", "serial": "10BCAC2HM5000CR", "android": 14, "abi": "arm64-v8a", "pid": 30131}
+  },
+  "configuration": {
+    "stt_engine": "SenseVoice-Small int8",
+    "tts_runtime": "sherpa-onnx 1.13.7",
+    "tts_model_family": "MMS/VITS English",
+    "tts_threads": 2,
+    "tts_engine_instances": 1,
+    "tts_native_model_sessions": 1,
+    "tts_queue_workers": 1,
+    "packet_v2_changed": false,
+    "translation_model_changed": false,
+    "tts_model_changed": false
+  },
+  "counts": {
+    "turns": 5,
+    "turn_submissions": 5,
+    "packet_creations": 5,
+    "transport_tx": 5,
+    "transport_ack": 5,
+    "receiver_rx": 5,
+    "tts_enqueues": 5,
+    "tts_starts": 5,
+    "tts_completions": 5,
+    "queue_drained": 5,
+    "duplicate_jobs": 0,
+    "process_restarts": 0
+  },
+  "queue_after_each_turn": [
+    {"turn": 1, "message_id": "da6891a5-195c-402d-9045-d23719e58c10", "queue_depth": 0, "active_jobs": 0},
+    {"turn": 2, "message_id": "0ec6f878-ec2b-4240-9214-090e53458651", "queue_depth": 0, "active_jobs": 0},
+    {"turn": 3, "message_id": "ddccdee7-09b4-41f3-a092-787fce603df3", "queue_depth": 0, "active_jobs": 0},
+    {"turn": 4, "message_id": "afed9575-d3d0-4bbb-8164-a95385d4f9e9", "queue_depth": 0, "active_jobs": 0},
+    {"turn": 5, "message_id": "6ccdc2ec-26b6-473f-ab01-f76cee514e3a", "queue_depth": 0, "active_jobs": 0}
+  ],
+  "memory_kb": {
+    "sender": [
+      {"point": "fresh_idle", "pss": 711587, "native_heap": 567172, "java_heap": 11640, "thermal_status": 1},
+      {"point": "post_turn_1_settled", "pss": 448517, "native_heap": 223220, "java_heap": 12264, "thermal_status": 1},
+      {"point": "post_turn_2_settled", "pss": 444590, "native_heap": 222512, "java_heap": 15260, "thermal_status": 1},
+      {"point": "post_turn_3_settled", "pss": 446435, "native_heap": 220888, "java_heap": 11560, "thermal_status": 1},
+      {"point": "post_turn_4_settled", "pss": 445980, "native_heap": 220844, "java_heap": 11064, "thermal_status": 1},
+      {"point": "post_turn_5_settled", "pss": 445581, "native_heap": 220836, "java_heap": 11088, "thermal_status": 1},
+      {"point": "final_settled", "pss": 444373, "native_heap": 220864, "java_heap": 9852, "thermal_status": 1}
+    ],
+    "receiver": [
+      {"point": "fresh_idle", "pss": 764266, "native_heap": 441556, "java_heap": 16812, "thermal_status": 0},
+      {"point": "post_turn_1_settled", "pss": 636486, "native_heap": 405724, "java_heap": 17700, "thermal_status": 0},
+      {"point": "post_turn_2_settled", "pss": 635580, "native_heap": 405780, "java_heap": 16620, "thermal_status": 0},
+      {"point": "post_turn_3_settled", "pss": 634526, "native_heap": 405776, "java_heap": 15584, "thermal_status": 0},
+      {"point": "post_turn_4_settled", "pss": 634506, "native_heap": 405776, "java_heap": 15552, "thermal_status": 0},
+      {"point": "post_turn_5_settled", "pss": 634410, "native_heap": 405776, "java_heap": 15556, "thermal_status": 0},
+      {"point": "final_settled", "pss": 634214, "native_heap": 405776, "java_heap": 15352, "thermal_status": 0}
+    ]
+  },
+  "gate_turn_performance_ms": {
+    "sensevoice_stt": [245, 298, 160, 171, 176],
+    "sensevoice_median": 176,
+    "sensevoice_p95": 298,
+    "tts_native_pipeline": [2320, 2313, 1965, 2214, 2281],
+    "tts_warm_values": [2313, 1965, 2214, 2281],
+    "tts_warm_conventional_median": 2247.5,
+    "tts_warm_p95": 2313,
+    "tts_generated_audio": [590, 611, 577, 660, 661],
+    "tts_rtf": [3.9322033898, 3.7855973813, 3.4055459272, 3.3545454545, 3.4508320726],
+    "tts_model_load": 2296
+  },
+  "prior_controlled_tts_profile": {
+    "device": "V2205",
+    "cold_load_ms": 2842,
+    "warm_short_synthesis_ms": [3010, 2795, 3307, 2546],
+    "warm_short_conventional_median_ms": 2902.5,
+    "warm_short_p95_ms": 3307,
+    "text_length_scaling": [
+      {"characters": 8, "synthesis_ms": 2158, "generated_audio_ms": 624, "rtf": 3.4583, "playback_ms": 840},
+      {"characters": 23, "synthesis_ms": 3886, "generated_audio_ms": 1799, "rtf": 2.1601, "playback_ms": 1967},
+      {"characters": 48, "synthesis_ms": 7456, "generated_audio_ms": 3370, "rtf": 2.2125, "playback_ms": 3553},
+      {"characters": 109, "synthesis_ms": 15908, "generated_audio_ms": 7083, "rtf": 2.2459, "playback_ms": 7264},
+      {"characters": 160, "synthesis_ms": 23785, "generated_audio_ms": 9898, "rtf": 2.4030, "playback_ms": 10089}
+    ],
+    "conclusion": "The opaque sherpa-onnx native frontend, inference, and waveform pipeline dominates. Preprocessing, AudioBuffer wrapping, and AudioTrack setup are negligible. No safe speculative optimization was promoted."
+  },
+  "memory_decision": {
+    "pass": true,
+    "reason": "All queues drained, PIDs and singleton counts remained stable, and settled PSS/native heap did not increase monotonically or progressively across five turns."
+  },
+  "official_latency_benchmark_performed": false
+}

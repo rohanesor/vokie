@@ -43,6 +43,14 @@ data class TtsResult(
     val audioDurationMs: Long,
     val timestamp: Long,
     val firstSynthesisForModel: Boolean,
+    // sherpa-onnx exposes generate() as one native frontend+inference+waveform call;
+    // tokenization/inference/postprocessing cannot be separated without changing runtime.
+    val preprocessingTimeMs: Double = 0.0,
+    val nativePipelineTimeMs: Long = synthesisTimeMs,
+    val audioBufferTimeMs: Double = 0.0,
+    val modelLoadTimeMs: Long = 0L,
+    val tokenCount: Int? = null,
+    val modelInstanceId: Long? = null,
 ) {
     val realTimeFactor: Double? get() = calculateTtsRealTimeFactor(synthesisTimeMs, audioDurationMs)
 }

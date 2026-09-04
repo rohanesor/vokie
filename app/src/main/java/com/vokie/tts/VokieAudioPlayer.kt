@@ -9,6 +9,7 @@ import android.media.AudioTrack
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.atomic.AtomicReference
@@ -55,6 +56,7 @@ class VokieAudioPlayer(private val context: Context) {
     fun release() = stop()
 
     private suspend fun playOnce(buffer: AudioBuffer, emergency: Boolean) {
+        val preparationStartedNs = SystemClock.elapsedRealtimeNanos()
         val attributes = AudioAttributes.Builder()
             .setUsage(if (emergency) AudioAttributes.USAGE_ALARM else AudioAttributes.USAGE_ASSISTANCE_ACCESSIBILITY)
             .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
@@ -88,7 +90,8 @@ class VokieAudioPlayer(private val context: Context) {
             Log.e(TAG, "AudioTrack construction failure rate=${buffer.sampleRate} channel=MONO encoding=PCM_FLOAT min=$minBufferBytes selected=$selectedBufferBytes samples=${buffer.samples.size}", error)
             throw TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Audio output could not be initialized.", error)
         }
-        Log.i(TAG, "AudioTrack init rate=${buffer.sampleRate} channel=MONO encoding=PCM_FLOAT mode=STREAM min=$minBufferBytes selected=$selectedBufferBytes samples=${buffer.samples.size} state=${track.state}")
+        val trackBuildMs = (SystemClock.elapsedRealtimeNanos() - preparationStartedNs) / 1_000_000.0
+        Log.i(TAG, "AudioTrack init rate=${buffer.sampleRate} channel=MONO encoding=PCM_FLOAT mode=STREAM min=$minBufferBytes selected=$selectedBufferBytes samples=${buffer.samples.size} state=${track.state} prepareMs=$trackBuildMs")
         if (track.state != AudioTrack.STATE_INITIALIZED) {
             track.release()
             throw TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Audio output could not be initialized (state=${track.state}).")
@@ -99,16 +102,23 @@ class VokieAudioPlayer(private val context: Context) {
             override fun onMarkerReached(audioTrack: AudioTrack) { completion.complete(Unit) }
             override fun onPeriodicNotification(audioTrack: AudioTrack) = Unit
         }, Handler(Looper.getMainLooper()))
+        val writeStartedNs = SystemClock.elapsedRealtimeNanos()
         val written = track.write(buffer.samples, 0, buffer.samples.size, AudioTrack.WRITE_BLOCKING)
-        Log.i(TAG, "AudioTrack write result=$written expected=${buffer.samples.size}")
+        val writeMs = (SystemClock.elapsedRealtimeNanos() - writeStartedNs) / 1_000_000.0
+        Log.i(TAG, "AudioTrack write result=$written expected=${buffer.samples.size} writeMs=$writeMs")
         if (written != buffer.samples.size) {
             stopWithFailure(TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Generated speech could not be written to audio output (wrote $written/${buffer.samples.size})."))
         }
         track.notificationMarkerPosition = buffer.samples.size
         track.setVolume(1f) // Maximum application gain; this does not override the user's device volume.
         try {
+            val playbackStartedNs = SystemClock.elapsedRealtimeNanos()
             track.play()
+            val playCallMs = (SystemClock.elapsedRealtimeNanos() - playbackStartedNs) / 1_000_000.0
+            Log.i(TAG, "AudioTrack playback started playCallMs=$playCallMs generatedAudioMs=${buffer.durationMs}")
             completion.await()
+            val playbackElapsedMs = (SystemClock.elapsedRealtimeNanos() - playbackStartedNs) / 1_000_000.0
+            Log.i(TAG, "AudioTrack playback completed elapsedMs=$playbackElapsedMs generatedAudioMs=${buffer.durationMs}")
         } finally {
             currentCompletion.compareAndSet(completion, null)
             if (currentTrack.compareAndSet(track, null)) {
