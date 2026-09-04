@@ -74,7 +74,7 @@ class BundledModelStore(private val context: Context) {
         const val BUFFER = 64 * 1024
         val BUNDLED_FILES = setOf(
             "stt/ggml-tiny-q5_1.bin", "tts/eng/model.onnx", "tts/eng/tokens.txt", "tts/hin/model.onnx", "tts/hin/tokens.txt",
-            "tts/tam/model.onnx", "tts/tam/tokens.txt",
+            "tts/tam/model.onnx", "tts/tam/tokens.txt", "tts/guj/model.onnx", "tts/guj/tokens.txt",
         )
     }
 }

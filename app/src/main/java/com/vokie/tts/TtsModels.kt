@@ -16,7 +16,8 @@ enum class TtsLanguage(
 ) {
     ENGLISH("eng", VokieLanguage.EN, "English"),
     HINDI("hin", VokieLanguage.HI, "हिन्दी"),
-    TAMIL("tam", VokieLanguage.TA, "தமிழ்");
+    TAMIL("tam", VokieLanguage.TA, "தமிழ்"),
+    GUJARATI("guj", VokieLanguage.GU, "ગુજરાતી");
 
     companion object {
         fun fromMessageCode(code: String): TtsLanguage? = entries.firstOrNull { it.messageLanguage.code == code.uppercase() }

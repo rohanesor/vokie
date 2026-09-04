@@ -11,13 +11,14 @@ class TtsCoreTest {
             VokieLanguage.EN to "eng",
             VokieLanguage.HI to "hin",
             VokieLanguage.TA to "tam",
+            VokieLanguage.GU to "guj",
         )
         expected.forEach { (messageLanguage, iso) ->
             val language = requireNotNull(TtsLanguage.fromMessageCode(messageLanguage.code))
             assertEquals(iso, language.iso6393)
             assertEquals(language, TtsLanguage.fromIso6393(iso))
         }
-        assertEquals(3, TtsLanguage.entries.size)
+        assertEquals(4, TtsLanguage.entries.size)
     }
 
     @Test fun languageRouterNeverSubstitutesAnUnavailableLanguage() {

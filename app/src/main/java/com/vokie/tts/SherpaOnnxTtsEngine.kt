@@ -111,7 +111,7 @@ class SherpaOnnxTtsEngine(
                 model = modelManager.modelFile(language).absolutePath,
                 tokens = modelManager.tokensFile(language).absolutePath,
                 lexicon = "",
-                dataDir = if (language == TtsLanguage.TAMIL) "" else modelManager.phonemizerDirectory().absolutePath,
+                dataDir = if (language in MMS_CHARACTER_LANGUAGES) "" else modelManager.phonemizerDirectory().absolutePath,
                 dictDir = "",
                 lengthScale = 1.0f,
             )
@@ -157,5 +157,7 @@ class SherpaOnnxTtsEngine(
         const val DEFAULT_THREADS = 2
         const val MAX_TEXT_CHARS = 500
         const val MAX_AUDIO_SECONDS = 120
+        /** MMS-TTS languages use a Unicode character frontend and do not require espeak-ng data. */
+        private val MMS_CHARACTER_LANGUAGES = setOf(TtsLanguage.TAMIL, TtsLanguage.GUJARATI)
     }
 }
