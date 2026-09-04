@@ -1,5 +1,6 @@
 package com.vokie.stt
 
+import com.vokie.communication.VokieLog
 import com.vokie.domain.model.VokieLanguage
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -9,11 +10,13 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicLong
 
 /**
  * SIH-L10-C1 — ContinuousTurnManager sits above [SttEngine] and exposes turn-scoped
@@ -96,8 +99,12 @@ class ContinuousTurnManager(
     @Volatile private var profile: UserLanguageProfile = UserLanguageProfile.same(VokieLanguage.EN)
     @Volatile private var currentTurnId: String? = null
     @Volatile private var currentTurnStartedAtMs: Long = 0L
-    @Volatile private var lastResultTimestamp: Long = Long.MIN_VALUE
-    @Volatile private var processingTurnId: String? = null
+    /**
+     * Monotonically increasing generation counter. Each call to [start] increments this.
+     * The collector and result handler check their captured generation against the live
+     * value; if they differ the callback is stale and must be discarded.
+     */
+    private val generation = AtomicLong(0)
     private var collectorJob: Job? = null
 
     init {
@@ -112,11 +119,13 @@ class ContinuousTurnManager(
         this.language = language
         this.profile = profile
         stopRequested.set(false)
-        lastResultTimestamp = Long.MIN_VALUE
+        val gen = generation.incrementAndGet()
         collectorJob?.cancel()
-        collectorJob = scope.launch { collectStt() }
+        // Drop(1) skips the StateFlow replay of whatever the previous turn left behind.
+        collectorJob = scope.launch { collectStt(gen) }
         beginTurn()
         stt.setInferenceTurnId(currentTurnId)
+        VokieLog.stt("VOICE_STATE: IDLE -> CAPTURING turn=${currentTurnId} gen=$gen")
         stt.start(language, profile, finalizeOnVad = (mode == TurnMode.CONTINUOUS))
     }
 
@@ -124,6 +133,7 @@ class ContinuousTurnManager(
     suspend fun stop() = mutex.withLock {
         if (_state.value in setOf(TurnState.IDLE, TurnState.STOPPED)) return@withLock
         stopRequested.set(true)
+        VokieLog.stt("VOICE_STATE: ${_state.value} -> STOP_REQUESTED turn=${currentTurnId}")
         stt.stop()
     }
 
@@ -136,22 +146,29 @@ class ContinuousTurnManager(
         _events.emit(TurnEvent.Started(id, mode, language.messageLanguage, currentTurnStartedAtMs))
     }
 
-    private suspend fun collectStt() {
-        stt.status.collect { status ->
+    private suspend fun collectStt(gen: Long) {
+        // Drop the first emission which is the stale StateFlow replay from the previous turn.
+        stt.status.drop(1).collect { status ->
+            // If generation has advanced, this collector belongs to an old turn — stop it.
+            if (generation.get() != gen) {
+                VokieLog.stt("VOICE_STATE: stale collector discarded gen=$gen current=${generation.get()}")
+                return@collect
+            }
             when (status.state) {
                 SttState.LISTENING -> if (_state.value != TurnState.LISTENING) _state.value = TurnState.LISTENING
                 SttState.PROCESSING -> {
                     _state.value = TurnState.PROCESSING
-                    processingTurnId = currentTurnId
+                    VokieLog.stt("VOICE_STATE: CAPTURING -> PROCESSING turn=${currentTurnId}")
                     currentTurnId?.let { timing?.endpoint(it) }
                 }
-                SttState.RESULT -> status.result?.let { processResult(it) }
+                SttState.RESULT -> status.result?.let { processResult(it, gen) }
                 SttState.ERROR -> {
                     val turnId = currentTurnId ?: return@collect
                     val failure = status.failure
                     if (failure != null) _events.emit(TurnEvent.Error(turnId, failure.code, failure.userMessage))
                     _state.value = TurnState.ERROR
                     stopRequested.set(true)
+                    VokieLog.stt("VOICE_STATE: -> ERROR turn=$turnId")
                     _events.emit(TurnEvent.Stopped(turnId))
                     collectorJob?.cancel(); collectorJob = null
                 }
@@ -160,16 +177,12 @@ class ContinuousTurnManager(
         }
     }
 
-    private suspend fun processResult(result: SttResult) {
-        if (result.timestamp == lastResultTimestamp) return
-        lastResultTimestamp = result.timestamp
-        val turnId = processingTurnId ?: currentTurnId ?: return
-        // A late result from an invalidated capture must never be attached to a new turn.
-        if (turnId != currentTurnId) {
-            processingTurnId = null
-            return
-        }
+    private suspend fun processResult(result: SttResult, gen: Long) {
+        // Stale generation — discard silently.
+        if (generation.get() != gen) return
+        val turnId = currentTurnId ?: return
         timing?.sttComplete(turnId, result.text, result.audioDurationMs)
+        VokieLog.stt("VOICE_STATE: PROCESSING -> COMPLETED turn=$turnId transcript=${result.text.take(40)}")
         val sentences = segmenter.split(result.text, result.language.messageLanguage)
         sentences.forEachIndexed { index, sentence ->
             _events.emit(TurnEvent.Sentence(turnId, index, sentence, result.language.messageLanguage))
@@ -183,8 +196,10 @@ class ContinuousTurnManager(
             completedAtMs = clockMs(),
         ))
         _state.value = TurnState.SENTENCE_READY
-        processingTurnId = null
         if (mode == TurnMode.CONTINUOUS && !stopRequested.get()) {
+            val nextGen = generation.incrementAndGet()
+            collectorJob?.cancel()
+            collectorJob = scope.launch { collectStt(nextGen) }
             beginTurn()
             stt.setInferenceTurnId(currentTurnId)
             stt.start(language, profile, finalizeOnVad = true)

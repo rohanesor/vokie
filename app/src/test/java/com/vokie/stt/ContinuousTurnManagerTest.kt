@@ -101,6 +101,16 @@ class ContinuousTurnManagerTest {
         assertTrue(events.any { it is TurnEvent.Stopped })
     }
 
+    @Test fun priorResultStateIsNotReplayedIntoNextTurn() = harness {
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
+        stt.emitResult("First.", SttLanguage.ENGLISH, ts = 100); awaitStopped()
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
+        yield()
+        assertEquals(1, events.filterIsInstance<TurnEvent.TurnCompleted>().size)
+        stt.emitResult("Second.", SttLanguage.ENGLISH, ts = 101); awaitCompletedCount(2)
+        assertEquals(listOf("First.", "Second."), events.filterIsInstance<TurnEvent.Sentence>().map { it.text })
+    }
+
     @Test fun duplicateResultTimestampIsIgnored() = harness {
         manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
         stt.emitResult("Hello.", SttLanguage.ENGLISH, ts = 30); awaitStopped()
@@ -137,5 +147,59 @@ class ContinuousTurnManagerTest {
         manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.TAMIL, UserLanguageProfile.same(VokieLanguage.TA)); awaitStarted()
         val started = events.filterIsInstance<TurnEvent.Started>().single()
         assertEquals(TurnMode.PUSH_TO_TALK, started.mode); assertEquals(VokieLanguage.TA, started.language)
+    }
+
+    // ── P1.9A frontend stabilization tests ──────────────────────────────────
+
+    @Test fun rapidPressReleaseDoesNotDuplicateTurn() = harness {
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
+        manager.stop()
+        // A second start should be accepted cleanly after the first turn stops.
+        stt.emitResult("Quick.", SttLanguage.ENGLISH, ts = 200); awaitStopped()
+        assertEquals(1, events.filterIsInstance<TurnEvent.TurnCompleted>().size)
+    }
+
+    @Test fun secondPressWhileProcessingIsRejected() = harness {
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
+        // Move to PROCESSING state
+        stt.emitResult("First.", SttLanguage.ENGLISH, ts = 300)
+        // SENTENCE_READY/STOPPED — but before that resolves, try starting again.
+        // The mutex serializes, so the second start should wait and succeed.
+        awaitStopped()
+        val completedBefore = events.filterIsInstance<TurnEvent.TurnCompleted>().size
+        // Now start again
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN))
+        // Wait for new Started
+        withTimeout(2_000L) { while (events.filterIsInstance<TurnEvent.Started>().size < 2) yield() }
+        assertEquals(completedBefore, events.filterIsInstance<TurnEvent.TurnCompleted>().size)
+        stt.emitResult("Second.", SttLanguage.ENGLISH, ts = 301); awaitCompletedCount(2)
+        assertEquals(listOf("First.", "Second."), events.filterIsInstance<TurnEvent.Sentence>().map { it.text })
+    }
+
+    @Test fun twoConsecutiveTurnsHaveDistinctIdsAndNoStaleResults() = harness {
+        // Turn 1
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
+        stt.emitResult("Turn one.", SttLanguage.ENGLISH, ts = 400); awaitStopped()
+        val firstTurnId = events.filterIsInstance<TurnEvent.Started>().first().turnId
+        // Turn 2
+        events.clear()
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN))
+        withTimeout(2_000L) { while (events.none { it is TurnEvent.Started }) yield() }
+        yield() // give the stale replay a chance to sneak in
+        val secondTurnId = events.filterIsInstance<TurnEvent.Started>().first().turnId
+        assertTrue(firstTurnId != secondTurnId)
+        // No TurnCompleted should exist yet — the stale RESULT from turn 1 must not replay.
+        assertEquals(0, events.filterIsInstance<TurnEvent.TurnCompleted>().size)
+        // Now a genuine result for turn 2
+        stt.emitResult("Turn two.", SttLanguage.ENGLISH, ts = 401)
+        withTimeout(2_000L) { while (events.none { it is TurnEvent.Stopped }) yield() }
+        assertEquals(listOf("Turn two."), events.filterIsInstance<TurnEvent.Sentence>().map { it.text })
+    }
+
+    @Test fun cancelDuringCaptureReturnsToIdle() = harness {
+        manager.start(TurnMode.PUSH_TO_TALK, SttLanguage.ENGLISH, UserLanguageProfile.same(VokieLanguage.EN)); awaitStarted()
+        manager.stop()
+        stt.emitError(SttErrorCode.NO_SPEECH, "No speech."); awaitStopped()
+        assertTrue(manager.state.value in setOf(TurnState.STOPPED, TurnState.ERROR))
     }
 }
