@@ -7,26 +7,19 @@ import java.io.File
 
 const val WHISPER_SAMPLE_RATE = 16_000
 
+/** The prototype accepts only an explicit, user-selected input language. */
 enum class SttLanguage(
     val whisperCode: String,
     val messageLanguage: VokieLanguage,
     val nativeName: String,
 ) {
-    AUTO("auto", VokieLanguage.EN, "Auto Detect"),
     ENGLISH("en", VokieLanguage.EN, "English"),
     HINDI("hi", VokieLanguage.HI, "हिन्दी"),
-    GUJARATI("gu", VokieLanguage.GU, "ગુજરાતી"),
-    MARATHI("mr", VokieLanguage.MR, "मराठी"),
-    KANNADA("kn", VokieLanguage.KN, "ಕನ್ನಡ"),
-    MALAYALAM("ml", VokieLanguage.ML, "മലയാളം"),
-    TAMIL("ta", VokieLanguage.TA, "தமிழ்"),
-    TELUGU("te", VokieLanguage.TE, "తెలుగు"),
-    ODIA("or", VokieLanguage.OR, "ଓଡ଼ିଆ"),
-    BENGALI("bn", VokieLanguage.BN, "বাংলা");
+    TAMIL("ta", VokieLanguage.TA, "தமிழ்");
 
     companion object {
         fun fromWhisperCode(code: String): SttLanguage? = entries.firstOrNull { it.whisperCode == code.lowercase() }
-        fun fromMessageCode(code: String): SttLanguage? = entries.firstOrNull { it != AUTO && it.messageLanguage.code == code.uppercase() }
+        fun fromMessageCode(code: String): SttLanguage? = entries.firstOrNull { it.messageLanguage.code == code.uppercase() }
     }
 }
 
@@ -73,29 +66,7 @@ fun mapSttFailure(error: Throwable, fallback: SttErrorCode, message: String): St
     else -> SttFailure(fallback, message, error)
 }
 
-enum class LanguageSelectionSource { AUTO_DETECTED, PREFERRED_FALLBACK, EXPLICIT_SELECTED }
-
-data class LanguageResolution(
-    val language: SttLanguage,
-    val detectedLanguage: SttLanguage?,
-    val source: LanguageSelectionSource,
-)
-
-fun resolveProductionSttLanguage(mode: SttRecognitionMode, preferred: UserLanguageProfile, selected: SttLanguage): SttLanguage = when (mode) {
-    SttRecognitionMode.PREFERRED_LANGUAGE -> preferred.inputSttLanguage
-    SttRecognitionMode.AUTO_DETECT -> SttLanguage.AUTO
-    SttRecognitionMode.EXPLICIT_LANGUAGE -> selected
-}
-
-fun resolveSttLanguage(requested: SttLanguage, detectedWhisperCode: String?, preferred: UserLanguageProfile): LanguageResolution = when {
-    requested != SttLanguage.AUTO -> LanguageResolution(requested, null, LanguageSelectionSource.EXPLICIT_SELECTED)
-    SttLanguage.fromWhisperCode(detectedWhisperCode.orEmpty())?.let { it != SttLanguage.AUTO } == true -> {
-        val detected = requireNotNull(SttLanguage.fromWhisperCode(detectedWhisperCode.orEmpty()))
-        LanguageResolution(detected, detected, LanguageSelectionSource.AUTO_DETECTED)
-    }
-    else -> LanguageResolution(preferred.inputSttLanguage, null, LanguageSelectionSource.PREFERRED_FALLBACK)
-}
-
+/** Result language is the explicit Whisper language requested from the user's input profile. */
 data class SttResult(
     val text: String,
     val language: SttLanguage,
@@ -103,9 +74,6 @@ data class SttResult(
     val processingTimeMs: Long,
     val audioDurationMs: Long,
     val timestamp: Long,
-    val detectedLanguage: SttLanguage? = language,
-    val requestedLanguage: SttLanguage? = language,
-    val languageSource: LanguageSelectionSource = LanguageSelectionSource.AUTO_DETECTED,
 ) {
     val realTimeFactor: Double? get() = calculateRealTimeFactor(processingTimeMs, audioDurationMs)
 }
@@ -118,6 +86,8 @@ data class SttStatus(
     val modelLoadTimeMs: Long? = null,
     val installedModelBytes: Long = 0,
 )
+
+fun resolveProductionSttLanguage(preferred: UserLanguageProfile): SttLanguage = preferred.inputSttLanguage
 
 fun audioDurationMs(sampleCount: Int, sampleRate: Int = WHISPER_SAMPLE_RATE): Long {
     require(sampleCount >= 0 && sampleRate > 0)

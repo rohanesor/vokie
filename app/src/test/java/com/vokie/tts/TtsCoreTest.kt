@@ -8,17 +8,16 @@ import org.junit.Test
 class TtsCoreTest {
     @Test fun allMessageLanguagesMapToMmsIsoCodesWithoutInventedPackages() {
         val expected = mapOf(
-            VokieLanguage.EN to "eng", VokieLanguage.HI to "hin", VokieLanguage.GU to "guj",
-            VokieLanguage.MR to "mar", VokieLanguage.KN to "kan", VokieLanguage.ML to "mal",
-            VokieLanguage.TA to "tam", VokieLanguage.TE to "tel", VokieLanguage.OR to "ory",
-            VokieLanguage.BN to "ben",
+            VokieLanguage.EN to "eng",
+            VokieLanguage.HI to "hin",
+            VokieLanguage.TA to "tam",
         )
         expected.forEach { (messageLanguage, iso) ->
             val language = requireNotNull(TtsLanguage.fromMessageCode(messageLanguage.code))
             assertEquals(iso, language.iso6393)
             assertEquals(language, TtsLanguage.fromIso6393(iso))
         }
-        assertEquals(10, TtsLanguage.entries.size)
+        assertEquals(3, TtsLanguage.entries.size)
     }
 
     @Test fun languageRouterNeverSubstitutesAnUnavailableLanguage() {

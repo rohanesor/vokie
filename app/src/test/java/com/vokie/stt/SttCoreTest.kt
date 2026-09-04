@@ -7,13 +7,12 @@ import org.junit.Test
 class SttCoreTest {
     @Test fun allRequiredLanguagesMapToWhisperAndMessageCodes() {
         val expected = mapOf(
-            "en" to VokieLanguage.EN, "hi" to VokieLanguage.HI, "gu" to VokieLanguage.GU,
-            "mr" to VokieLanguage.MR, "kn" to VokieLanguage.KN, "ml" to VokieLanguage.ML,
-            "ta" to VokieLanguage.TA, "te" to VokieLanguage.TE, "or" to VokieLanguage.OR,
-            "bn" to VokieLanguage.BN,
+            "en" to VokieLanguage.EN,
+            "hi" to VokieLanguage.HI,
+            "ta" to VokieLanguage.TA,
         )
-        assertEquals(expected.size + 1, SttLanguage.entries.size)
-        assertEquals(SttLanguage.AUTO, SttLanguage.fromWhisperCode("auto"))
+        assertEquals(expected.size, SttLanguage.entries.size)
+        assertNull(SttLanguage.fromWhisperCode("auto"))
         expected.forEach { (whisper, message) ->
             val language = requireNotNull(SttLanguage.fromWhisperCode(whisper))
             assertEquals(message, language.messageLanguage)

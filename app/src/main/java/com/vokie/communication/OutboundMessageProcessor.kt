@@ -13,6 +13,7 @@ class OutboundMessageProcessor(
     private val transports: TransportManager,
     private val events: com.vokie.data.local.TransportEventDao,
     private val scope: CoroutineScope,
+    private val sessionManager: PeerSessionManager? = null,
 ) {
     private val mutex = Mutex()
     private var job: Job? = null
@@ -33,9 +34,13 @@ class OutboundMessageProcessor(
             val transportType = transports.activeTransportType() ?: return
             repository.markTransmitting(id, transportType)
             events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transportType.name, eventType = "TRANSMISSION_STARTED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = null))
+            // Record the outbound message against the destination peer session.
+            val destinationPeer = message.receiverId ?: transports.connectedPeerId.value
+            if (destinationPeer != null) sessionManager?.recordOutgoingMessage(destinationPeer, message.copy(receiverId = destinationPeer))
             val result = transports.sendMessage(message)
             if (result.acknowledged) {
                 repository.markReceived(id)
+                if (destinationPeer != null) sessionManager?.recordAck(destinationPeer, message.id, message.sequenceNumber)
                 events.insert(com.vokie.data.local.TransportEventEntity(timestamp = System.currentTimeMillis(), transport = transportType.name, eventType = "ACK_RECEIVED", peerId = transports.connectedPeerId.value, messageId = id, detail = null, latencyMs = result.ackLatencyMs))
             } else if (transports.connectionState.value != TransportConnectionState.CONNECTED) {
                 repository.markQueued(id, result.error ?: "Connection lost")

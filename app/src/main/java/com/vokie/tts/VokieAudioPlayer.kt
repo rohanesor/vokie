@@ -9,6 +9,7 @@ import android.media.AudioTrack
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import kotlinx.coroutines.CompletableDeferred
 import java.util.concurrent.atomic.AtomicReference
 
@@ -63,19 +64,34 @@ class VokieAudioPlayer(private val context: Context) {
             .setEncoding(AudioFormat.ENCODING_PCM_FLOAT)
             .setChannelMask(AudioFormat.CHANNEL_OUT_MONO)
             .build()
+        val minBufferBytes = AudioTrack.getMinBufferSize(
+            buffer.sampleRate,
+            AudioFormat.CHANNEL_OUT_MONO,
+            AudioFormat.ENCODING_PCM_FLOAT,
+        )
+        if (minBufferBytes <= 0) {
+            Log.e(TAG, "AudioTrack min-buffer failure rate=${buffer.sampleRate} channel=MONO encoding=PCM_FLOAT result=$minBufferBytes")
+            throw TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "PCM float audio output is unavailable (min buffer=$minBufferBytes).")
+        }
+        // MODE_STATIC is not reliably supported for PCM_FLOAT on Android device outputs.
+        // Stream the already-normalized float PCM with a buffer that satisfies the platform
+        // minimum and can hold this complete utterance.
+        val selectedBufferBytes = maxOf(minBufferBytes, buffer.samples.size * Float.SIZE_BYTES)
         val track = try {
             AudioTrack.Builder()
                 .setAudioAttributes(attributes)
                 .setAudioFormat(format)
-                .setTransferMode(AudioTrack.MODE_STATIC)
-                .setBufferSizeInBytes(buffer.samples.size * Float.SIZE_BYTES)
+                .setTransferMode(AudioTrack.MODE_STREAM)
+                .setBufferSizeInBytes(selectedBufferBytes)
                 .build()
         } catch (error: Throwable) {
+            Log.e(TAG, "AudioTrack construction failure rate=${buffer.sampleRate} channel=MONO encoding=PCM_FLOAT min=$minBufferBytes selected=$selectedBufferBytes samples=${buffer.samples.size}", error)
             throw TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Audio output could not be initialized.", error)
         }
+        Log.i(TAG, "AudioTrack init rate=${buffer.sampleRate} channel=MONO encoding=PCM_FLOAT mode=STREAM min=$minBufferBytes selected=$selectedBufferBytes samples=${buffer.samples.size} state=${track.state}")
         if (track.state != AudioTrack.STATE_INITIALIZED) {
             track.release()
-            throw TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Audio output could not be initialized.")
+            throw TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Audio output could not be initialized (state=${track.state}).")
         }
         val completion = CompletableDeferred<Unit>()
         currentTrack.set(track); currentCompletion.set(completion)
@@ -84,8 +100,9 @@ class VokieAudioPlayer(private val context: Context) {
             override fun onPeriodicNotification(audioTrack: AudioTrack) = Unit
         }, Handler(Looper.getMainLooper()))
         val written = track.write(buffer.samples, 0, buffer.samples.size, AudioTrack.WRITE_BLOCKING)
+        Log.i(TAG, "AudioTrack write result=$written expected=${buffer.samples.size}")
         if (written != buffer.samples.size) {
-            stopWithFailure(TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Generated speech could not be written to audio output."))
+            stopWithFailure(TtsException(TtsErrorCode.AUDIO_OUTPUT_FAILED, "Generated speech could not be written to audio output (wrote $written/${buffer.samples.size})."))
         }
         track.notificationMarkerPosition = buffer.samples.size
         track.setVolume(1f) // Maximum application gain; this does not override the user's device volume.
@@ -131,5 +148,6 @@ class VokieAudioPlayer(private val context: Context) {
     private companion object {
         const val MAX_AUDIO_DURATION_MS = 120_000L
         const val SOS_REPEAT_COUNT = 2
+        const val TAG = "VOKIE_AUDIO"
     }
 }

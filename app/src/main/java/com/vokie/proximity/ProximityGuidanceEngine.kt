@@ -25,8 +25,9 @@ class ProximityGuidanceEngine(private val nearbyMeters: Double = 20.0, private v
         val contradictory = (gpsMovement == RssiTrend.STRENGTHENING && trend == RssiTrend.WEAKENING) || (gpsMovement == RssiTrend.WEAKENING && trend == RssiTrend.STRENGTHENING)
         val state = when {
             contradictory -> ProximityGuidanceState.SIGNAL_UNRELIABLE
-            gpsMovement == RssiTrend.STRENGTHENING && trend == RssiTrend.STRENGTHENING -> ProximityGuidanceState.GETTING_CLOSER
-            gpsMovement == RssiTrend.WEAKENING && trend == RssiTrend.WEAKENING -> ProximityGuidanceState.GETTING_FARTHER
+            gpsMovement == RssiTrend.STRENGTHENING && trend in setOf(RssiTrend.STRENGTHENING, RssiTrend.UNKNOWN) -> ProximityGuidanceState.GETTING_CLOSER
+            gpsMovement == RssiTrend.WEAKENING && trend in setOf(RssiTrend.WEAKENING, RssiTrend.UNKNOWN) -> ProximityGuidanceState.GETTING_FARTHER
+            gpsMovement == RssiTrend.STABLE -> ProximityGuidanceState.STABLE
             else -> ProximityGuidanceState.GUIDANCE_ACTIVE
         }
         return ProximityGuidance(state, location, trend, if (contradictory) LocationConfidence.LOW else location.confidence)

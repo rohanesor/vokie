@@ -1,6 +1,8 @@
 package com.vokie.tts
 
 import com.vokie.domain.model.MessageType
+import com.vokie.stt.TurnTimingFailure
+import com.vokie.stt.TurnTimingRecorder
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
@@ -24,6 +26,7 @@ class TtsPlaybackQueue(
     private val engine: TtsEngine,
     private val speed: StateFlow<Float>,
     private val scope: CoroutineScope,
+    private val timing: TurnTimingRecorder? = null,
 ) {
     private val lock = Mutex()
     private val queue = TtsPriorityQueue()
@@ -84,11 +87,16 @@ class TtsPlaybackQueue(
     private suspend fun process(item: TtsQueueItem) {
         try {
             setState(item.messageId, MessageTtsState.SYNTHESIZING)
+            timing?.ttsStart(item.messageId)
             val audio = engine.synthesize(item.text, item.language, speed.value).first
+            timing?.audioReady(item.messageId)
             setState(item.messageId, MessageTtsState.PLAYING)
+            // Engine.play enters AudioTrack playback immediately after queue handoff.
+            timing?.playbackStart(item.messageId)
             engine.play(audio, emergency = item.messageType == MessageType.SOS)
             setState(item.messageId, MessageTtsState.COMPLETED)
         } catch (_: Throwable) {
+            timing?.fail(null, item.messageId, TurnTimingFailure.TTS)
             setState(item.messageId, MessageTtsState.FAILED)
         }
     }

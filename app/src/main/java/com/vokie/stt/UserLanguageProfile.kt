@@ -10,7 +10,7 @@ import kotlinx.coroutines.flow.map
 
 private val Context.userLanguageProfileStore by preferencesDataStore(name = "user_language_profile")
 
-/** Local input/output choice. AUTO is a recognition mode, not a profile language. */
+/** Local input/output choice. Both values are independent and limited to today's prototype languages. */
 data class UserLanguageProfile(
     val preferredInputLanguage: VokieLanguage,
     val preferredOutputLanguage: VokieLanguage = preferredInputLanguage,
@@ -19,11 +19,12 @@ data class UserLanguageProfile(
     val outputSttLanguage: SttLanguage get() = requireNotNull(SttLanguage.fromMessageCode(preferredOutputLanguage.code))
 
     companion object {
-        val onboardingOptions: List<UserLanguageProfile> = VokieLanguage.entries.map(::UserLanguageProfile)
+        val supportedLanguages = listOf(VokieLanguage.EN, VokieLanguage.HI, VokieLanguage.TA)
+        val onboardingOptions: List<UserLanguageProfile> = supportedLanguages.map(::UserLanguageProfile)
         fun same(language: VokieLanguage) = UserLanguageProfile(language, language)
         fun fromCodes(input: String?, output: String?): UserLanguageProfile? {
-            val inputLanguage = input?.let(VokieLanguage::fromCode) ?: return null
-            val outputLanguage = output?.let(VokieLanguage::fromCode) ?: return null
+            val inputLanguage = input?.let(VokieLanguage::fromCode)?.takeIf { it in supportedLanguages } ?: return null
+            val outputLanguage = output?.let(VokieLanguage::fromCode)?.takeIf { it in supportedLanguages } ?: return null
             return UserLanguageProfile(inputLanguage, outputLanguage)
         }
     }
@@ -40,6 +41,15 @@ class UserLanguageProfilePreferences(private val context: Context) {
         context.userLanguageProfileStore.edit {
             it[INPUT_LANGUAGE] = profile.preferredInputLanguage.code
             it[OUTPUT_LANGUAGE] = profile.preferredOutputLanguage.code
+            it.remove(LEGACY_PREFERRED_LANGUAGE)
+        }
+    }
+
+    /** Debug-only caller gate; useful for physically rechecking first-run UI without ADB data clearing. */
+    suspend fun clear() {
+        context.userLanguageProfileStore.edit {
+            it.remove(INPUT_LANGUAGE)
+            it.remove(OUTPUT_LANGUAGE)
             it.remove(LEGACY_PREFERRED_LANGUAGE)
         }
     }

@@ -11,6 +11,7 @@ import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.os.Build
+import com.vokie.communication.VokieLog
 import androidx.core.content.ContextCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -48,6 +49,7 @@ internal class MicrophoneAudioRecorder(
     @SuppressLint("MissingPermission")
     suspend fun start(
         onVadState: (VadState) -> Unit,
+        finalizeOnVad: Boolean = true,
         onFinalized: suspend (CapturedAudio) -> Unit,
         onFailure: (SttFailure) -> Unit,
     ) {
@@ -91,6 +93,7 @@ internal class MicrophoneAudioRecorder(
         }
         audioRecord = recorder
         recording.set(true)
+        VokieLog.stt("recordingStartTimestamp=${android.os.SystemClock.elapsedRealtime()}")
         captureJob = scope.launch(Dispatchers.IO) {
             val frame = ShortArray(FRAME_SAMPLES)
             try {
@@ -107,7 +110,7 @@ internal class MicrophoneAudioRecorder(
                     }
                     val decision = vad.process(frame, copied)
                     onVadState(decision.state)
-                    if (decision.finalizeUtterance || capturedCount >= captured.size) {
+                    if ((finalizeOnVad && decision.finalizeUtterance) || capturedCount >= captured.size) {
                         recording.set(false)
                         if (vad.hasSpeech && finalized.compareAndSet(false, true)) onFinalized(snapshot())
                     }
@@ -124,11 +127,13 @@ internal class MicrophoneAudioRecorder(
     }
 
     suspend fun stop(): CapturedAudio? {
+        VokieLog.stt("recordingStopRequested timestamp=${android.os.SystemClock.elapsedRealtime()}")
         recording.set(false)
         runCatching { audioRecord?.stop() }
         val job = captureJob
         if (job != null && job !== kotlinx.coroutines.currentCoroutineContext()[Job]) job.cancelAndJoin()
         captureJob = null
+        VokieLog.stt("recordingStopped timestamp=${android.os.SystemClock.elapsedRealtime()} capturedSampleCount=$capturedCount capturedAudioDurationMs=${audioDurationMs(capturedCount)} vadHasSpeech=${vad.hasSpeech}")
         // PTT release is authoritative: submit any usable capture, regardless of VAD state.
         return if (finalized.compareAndSet(false, true) && capturedCount >= MIN_CAPTURE_SAMPLES) snapshot() else null
     }

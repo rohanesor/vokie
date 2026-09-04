@@ -21,7 +21,10 @@ class ReceiverTranslationCoordinatorTest {
     }
     @Test fun sameLanguageBypassesAndUnavailableIsExplicit() = runBlocking {
         val fake = Fake(); val c = ReceiverTranslationCoordinator(fake)
-        assertEquals("नमस्ते", c.present("x", "नमस्ते", VokieLanguage.HI, VokieLanguage.HI).displayText); assertEquals(0, fake.calls)
+        assertEquals("hello", c.present("en", "hello", VokieLanguage.EN, VokieLanguage.EN).displayText)
+        assertEquals("नमस्ते", c.present("hi", "नमस्ते", VokieLanguage.HI, VokieLanguage.HI).displayText)
+        assertEquals("வணக்கம்", c.present("ta", "வணக்கம்", VokieLanguage.TA, VokieLanguage.TA).displayText)
+        assertEquals(0, fake.calls)
         val unavailable = ReceiverTranslationCoordinator(UnavailableTranslationEngine()).present("x", "hello", VokieLanguage.EN, VokieLanguage.TA)
         assertEquals(ReceiverPresentationState.TRANSLATION_UNAVAILABLE, unavailable.state); assertNull(unavailable.displayText)
     }

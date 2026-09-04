@@ -84,6 +84,7 @@ android {
             version = "3.22.1"
         }
     }
+    testOptions { unitTests.isReturnDefaultValues = true }
     ksp { arg("room.schemaLocation", "$projectDir/schemas") }
     androidResources {
         // Native engines need filesystem copies; keep APK model entries stored to avoid recompression.
@@ -134,7 +135,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 
     // Official sherpa-onnx Android AAR, pinned to the upstream GitHub release.
-    implementation("com.k2fsa:sherpa-onnx:1.13.6@aar")
+    implementation("com.k2fsa:sherpa-onnx:1.13.7@aar")
 
     // DataStore for settings
     implementation("androidx.datastore:datastore-preferences:1.1.1")

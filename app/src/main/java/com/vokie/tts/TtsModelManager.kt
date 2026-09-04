@@ -16,6 +16,7 @@ class TtsModelManager(context: Context) {
     fun modelDirectory(language: TtsLanguage): File = bundled.ttsDirectory(language.iso6393)
     fun modelFile(language: TtsLanguage) = File(modelDirectory(language), "model.onnx")
     fun tokensFile(language: TtsLanguage) = File(modelDirectory(language), "tokens.txt")
+    fun phonemizerDirectory() = bundled.ttsDirectory("espeak-ng-data")
     fun isInstalled(language: TtsLanguage): Boolean = try {
         val model = bundled.spec("tts/${language.iso6393}/model.onnx")
         val tokens = bundled.spec("tts/${language.iso6393}/tokens.txt")

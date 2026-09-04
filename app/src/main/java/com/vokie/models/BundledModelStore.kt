@@ -25,6 +25,10 @@ class BundledModelStore(private val context: Context) {
                 }
                 check(destination.length() == spec.sizeBytes && destination.sha256() == spec.sha256) { "Bundled model integrity check failed: $relative" }
             }
+            // Piper voices require the shared phonemizer data directory. It is copied from
+            // the approved sherpa-onnx Hindi bundle and shared by all Piper voices.
+            copyAssetTree("models/tts/espeak-ng-data", File(temporary, "tts/espeak-ng-data"))
+            check(File(temporary, "tts/espeak-ng-data/phondata").isFile) { "Bundled espeak-ng-data is incomplete" }
             FileOutputStream(File(temporary, "manifest.json")).use { it.write(manifest.raw.toByteArray()) }
             val old = File(context.filesDir, ".models.previous")
             old.deleteRecursively()
@@ -50,7 +54,7 @@ class BundledModelStore(private val context: Context) {
         val spec = manifest.files[relative] ?: return@all false
         val file = File(root, relative)
         file.isFile && file.length() == spec.sizeBytes && file.sha256() == spec.sha256
-    }
+    } && File(root, "tts/espeak-ng-data/phondata").isFile
     private fun File.sha256(): String = inputStream().use { input ->
         val digest = MessageDigest.getInstance("SHA-256"); val buffer = ByteArray(BUFFER)
         while (true) { val count = input.read(buffer); if (count < 0) break; digest.update(buffer, 0, count) }
@@ -58,8 +62,19 @@ class BundledModelStore(private val context: Context) {
     }
     data class ModelFile(val sizeBytes: Long, val sha256: String)
     data class ModelManifest(val raw: String, val files: Map<String, ModelFile>)
+    private fun copyAssetTree(assetPath: String, destination: File) {
+        destination.mkdirs()
+        context.assets.list(assetPath).orEmpty().forEach { child ->
+            val source = "$assetPath/$child"; val target = File(destination, child)
+            if (context.assets.list(source).orEmpty().isNotEmpty()) copyAssetTree(source, target)
+            else context.assets.open(source).use { input -> FileOutputStream(target).use { output -> input.copyTo(output, BUFFER) } }
+        }
+    }
     private companion object {
         const val BUFFER = 64 * 1024
-        val BUNDLED_FILES = setOf("stt/ggml-tiny-q5_1.bin", "tts/eng/model.onnx", "tts/eng/tokens.txt")
+        val BUNDLED_FILES = setOf(
+            "stt/ggml-tiny-q5_1.bin", "tts/eng/model.onnx", "tts/eng/tokens.txt", "tts/hin/model.onnx", "tts/hin/tokens.txt",
+            "tts/tam/model.onnx", "tts/tam/tokens.txt",
+        )
     }
 }

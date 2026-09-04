@@ -5,7 +5,8 @@ import kotlinx.coroutines.flow.StateFlow
 
 enum class TransportType { BLUETOOTH, WIFI_DIRECT, ULTRASONIC }
 enum class DeliveryState { QUEUED, TRANSMITTING, RETRYING, RECEIVED_BY_PEER, RELAYED, DELIVERED, FAILED }
-enum class MessageType { TEXT, SOS, CHECK_IN, SYSTEM }
+// LOCATION is appended to preserve existing PacketV2 type ordinals for TEXT/SOS/CHECK_IN/SYSTEM.
+enum class MessageType { TEXT, SOS, CHECK_IN, SYSTEM, LOCATION }
 enum class CommunicationStatus { ONLINE, OFFLINE, BLUETOOTH_READY, WIFI_READY, SEARCHING, CONNECTED, TRANSMITTING, RECEIVING, QUEUED, FAILED }
 enum class VokieLanguage(val code: String, val displayName: String) {
     HI("HI", "Hindi"), GU("GU", "Gujarati"), MR("MR", "Marathi"), KN("KN", "Kannada"),

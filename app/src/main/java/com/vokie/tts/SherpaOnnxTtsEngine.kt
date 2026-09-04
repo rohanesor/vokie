@@ -111,7 +111,7 @@ class SherpaOnnxTtsEngine(
                 model = modelManager.modelFile(language).absolutePath,
                 tokens = modelManager.tokensFile(language).absolutePath,
                 lexicon = "",
-                dataDir = "",
+                dataDir = if (language == TtsLanguage.TAMIL) "" else modelManager.phonemizerDirectory().absolutePath,
                 dictDir = "",
                 lengthScale = 1.0f,
             )

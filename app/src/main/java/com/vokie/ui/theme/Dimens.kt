@@ -26,5 +26,7 @@ object VokieDimens {
     val borderWidth = 1.dp
 
     val pushToTalkSize = 200.dp
+    val pttHeight = 72.dp
+    val pttCorner = 24.dp
     val sosButtonHeight = 72.dp
 }

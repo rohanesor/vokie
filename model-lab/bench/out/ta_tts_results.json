@@ -1,0 +1,69 @@
+{
+  "load_time_s": 0.643,
+  "base_rss_mb": 36.7,
+  "loaded_rss_mb": 188.0,
+  "sample_rate": 16000,
+  "msgs": {
+    "எனக்கு உதவி வேண்டும்.": {
+      "first_syn_s": 1.067,
+      "median_s": 1.074,
+      "p95_s": 1.081,
+      "rtf": 0.53,
+      "duration_s": 2.026,
+      "peak": 0.703,
+      "clip_frac": 0.0,
+      "peak_rss_mb": 226.1,
+      "wav": "ta_mms_0.wav",
+      "wav_bytes": 64866
+    },
+    "நான் இங்கே இருக்கிறேன்.": {
+      "first_syn_s": 1.092,
+      "median_s": 1.017,
+      "p95_s": 1.041,
+      "rtf": 0.56,
+      "duration_s": 1.815,
+      "peak": 0.706,
+      "clip_frac": 0.0,
+      "peak_rss_mb": 227.5,
+      "wav": "ta_mms_1.wav",
+      "wav_bytes": 58138
+    },
+    "நீங்கள் எங்கே இருக்கிறீர்கள்?": {
+      "first_syn_s": 1.118,
+      "median_s": 1.12,
+      "p95_s": 1.176,
+      "rtf": 0.555,
+      "duration_s": 2.02,
+      "peak": 0.681,
+      "clip_frac": 0.0,
+      "peak_rss_mb": 232.9,
+      "wav": "ta_mms_2.wav",
+      "wav_bytes": 64674
+    },
+    "அவசர உதவி தேவை.": {
+      "first_syn_s": 0.993,
+      "median_s": 0.993,
+      "p95_s": 1.019,
+      "rtf": 0.56,
+      "duration_s": 1.774,
+      "peak": 0.648,
+      "clip_frac": 0.0,
+      "peak_rss_mb": 247.3,
+      "wav": "ta_mms_3.wav",
+      "wav_bytes": 56812
+    },
+    "தயவுசெய்து என்னைத் தொடர்பு கொள்ளுங்கள்.": {
+      "first_syn_s": 1.599,
+      "median_s": 1.586,
+      "p95_s": 1.631,
+      "rtf": 0.561,
+      "duration_s": 2.825,
+      "peak": 0.604,
+      "clip_frac": 0.0,
+      "peak_rss_mb": 256.9,
+      "wav": "ta_mms_4.wav",
+      "wav_bytes": 90434
+    }
+  },
+  "peak_rss_mb": 256.9
+}

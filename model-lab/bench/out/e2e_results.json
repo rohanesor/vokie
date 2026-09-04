@@ -1,0 +1,53 @@
+{
+  "ta->hi->HI-TTS": {
+    "source": "எனக்கு உதவி வேண்டும்.",
+    "translated": "मुझे मदद की जरूरत है.",
+    "translate_s": 0.298,
+    "tts_s": 0.188,
+    "tts_audio_dur_s": 1.87,
+    "combined_peak_rss_mb": 1009.3
+  },
+  "hi->ta->TA-TTS": {
+    "source": "मुझे मदद चाहिए।",
+    "translated": "எனக்கு உதவி தேவை.",
+    "translate_s": 0.215,
+    "tts_s": 1.076,
+    "tts_audio_dur_s": 1.788,
+    "combined_peak_rss_mb": 1036.0
+  },
+  "en->hi->HI-TTS": {
+    "source": "I need help. Please come to my location.",
+    "translated": "मुझे मदद की ज़रूरत है. कृपया मेरे स्थान पर आओ.",
+    "translate_s": 0.461,
+    "tts_s": 0.319,
+    "tts_audio_dur_s": 3.913,
+    "combined_peak_rss_mb": 1048.8
+  },
+  "en->ta->TA-TTS": {
+    "source": "I am in danger.",
+    "translated": "நான் ஆபத்தில் இருக்கிறேன்.",
+    "translate_s": 0.246,
+    "tts_s": 0.964,
+    "tts_audio_dur_s": 2.092,
+    "combined_peak_rss_mb": 1049.1
+  },
+  "ta->ta TA-TTS(bc)": {
+    "source": "நான் இங்கே இருக்கிறேன்.",
+    "bypass": true,
+    "tts_s": 1.021,
+    "tts_audio_dur_s": 1.93
+  },
+  "hi->hi HI-TTS(bc)": {
+    "source": "मुझे मदद चाहिए।",
+    "bypass": true,
+    "tts_s": 0.119,
+    "tts_audio_dur_s": 1.509
+  },
+  "en->en HI-TTS(note)": {
+    "source": "Help me.",
+    "bypass": true,
+    "tts_s": 0.076,
+    "tts_audio_dur_s": 0.731
+  },
+  "combined_peak_rss_mb": 1049.7
+}

@@ -41,6 +41,8 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     private var reconnectJob: Job? = null
     private var manuallyDisconnected = false
     @Volatile private var reconnectPeerId: String? = null
+    @Volatile private var reconnectGeneration = 0L
+    private val reconnectPolicy = ReconnectPolicy.BLUETOOTH
     private var input: DataInputStream? = null
     private var output: DataOutputStream? = null
     private var receiverRegistered = false
@@ -48,6 +50,9 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
     private val receivedPackets = MutableSharedFlow<ByteArray>(extraBufferCapacity = 32)
     private val ackTracker = AckTracker()
     private val reassembler = PacketReassembler()
+    /** Called exactly once when a live RFCOMM session ends unexpectedly. */
+    var onDisconnected: ((peerId: String?) -> Unit)? = null
+    private val discoveredCandidates = BluetoothPeerCandidates()
 
     private val discoveryReceiver = object : BroadcastReceiver() {
         @SuppressLint("MissingPermission")
@@ -56,17 +61,25 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                 BluetoothDevice.ACTION_FOUND -> {
                     if (!BluetoothPermission.hasDiscovery(ctx) || !BluetoothPermission.hasConnection(ctx)) return
                     val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
+                    // SDP UUID lookup is unreliable for unpaired Android 14/15 peers. Keep the
+                    // inquiry result as a candidate; connect() still verifies the known Vokie UUID.
+                    retainCandidate(
+                        device,
+                        intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).takeIf { it != Short.MIN_VALUE }?.toInt(),
+                        intent.getStringExtra(BluetoothDevice.EXTRA_NAME),
+                    )
                     device.fetchUuidsWithSdp()
                 }
                 BluetoothDevice.ACTION_UUID -> {
                     if (!BluetoothPermission.hasDiscovery(ctx) || !BluetoothPermission.hasConnection(ctx)) return
                     val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
                     val uuids = IntentCompat.getParcelableArrayExtra(intent, BluetoothDevice.EXTRA_UUID, android.os.ParcelUuid::class.java)?.mapNotNull { (it as? android.os.ParcelUuid)?.uuid } ?: emptyList()
-                    if (VokieProtocol.SERVICE_UUID in uuids) {
-                        val rssi = intent.getShortExtra(BluetoothDevice.EXTRA_RSSI, Short.MIN_VALUE).takeIf { it != Short.MIN_VALUE }?.toInt()
-                        val peer = Peer(device.address, device.name ?: "Unnamed iTantra device", device.address, device.bondState == BluetoothDevice.BOND_BONDED, rssi)
-                        _peers.update { old -> (old.filterNot { it.address == peer.address } + peer).sortedBy { it.name } }
-                    }
+                    if (VokieProtocol.SERVICE_UUID in uuids) retainCandidate(device, null)
+                }
+                BluetoothDevice.ACTION_NAME_CHANGED -> {
+                    if (!BluetoothPermission.hasConnection(ctx)) return
+                    val device = IntentCompat.getParcelableExtra(intent, BluetoothDevice.EXTRA_DEVICE, BluetoothDevice::class.java) ?: return
+                    retainCandidate(device, null, intent.getStringExtra(BluetoothDevice.EXTRA_NAME))
                 }
                 BluetoothAdapter.ACTION_DISCOVERY_FINISHED -> if (_state.value == TransportConnectionState.SEARCHING) _state.value = TransportConnectionState.IDLE
                 BluetoothAdapter.ACTION_STATE_CHANGED -> {
@@ -108,6 +121,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
         val bt = adapter ?: error("Bluetooth is not available on this phone")
         if (!bt.isEnabled) error("Turn on Bluetooth to communicate.")
         registerReceiver()
+        discoveredCandidates.clear()
         _peers.value = emptyList()
         bt.bondedDevices.forEach { it.fetchUuidsWithSdp() }
         startServer(bt)
@@ -115,6 +129,17 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
         _state.value = TransportConnectionState.SEARCHING
         check(bt.startDiscovery()) { "Bluetooth discovery could not start." }
         VokieLog.bt("Discovery started")
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun retainCandidate(device: BluetoothDevice, rssi: Int?, discoveredName: String? = null) {
+        discoveredCandidates.retain(
+            address = device.address,
+            name = discoveredName ?: device.name,
+            bonded = device.bondState == BluetoothDevice.BOND_BONDED,
+            rssi = rssi,
+            discoveredAtMs = System.currentTimeMillis(),
+        )?.let { _peers.value = it }
     }
 
     @SuppressLint("MissingPermission")
@@ -139,6 +164,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
             socket = candidate; input = DataInputStream(candidate.inputStream); output = DataOutputStream(candidate.outputStream)
             _connectedPeerId.value = peerId
             _state.value = TransportConnectionState.CONNECTED
+            reconnectGeneration++ // invalidate stale reconnect loops
             VokieLog.bt("Connection established: $peerId")
             listenForFrames()
         } catch (t: Throwable) { closeSocket(); _state.value = TransportConnectionState.FAILED; VokieLog.bt("Connection failed: ${t.message}"); scheduleReconnect(peerId); throw IOException("Connection failed", t) }
@@ -188,7 +214,7 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                 }
             } catch (cancelled: kotlinx.coroutines.CancellationException) {
                 throw cancelled
-            } catch (t: Throwable) { if (connectionState.value == TransportConnectionState.CONNECTED) { closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Connection lost: ${t.message}"); reconnectPeerId?.let(::scheduleReconnect) } }
+            } catch (t: Throwable) { if (connectionState.value == TransportConnectionState.CONNECTED) { val lostPeer = _connectedPeerId.value; closeSocket(); _connectedPeerId.value = null; _state.value = TransportConnectionState.DISCONNECTED; VokieLog.bt("Connection lost: ${t.message}"); onDisconnected?.invoke(lostPeer); reconnectPeerId?.let(::scheduleReconnect) } }
         }
     }
 
@@ -203,6 +229,8 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
                 serverSocket = bt.listenUsingRfcommWithServiceRecord(VokieProtocol.SERVICE_NAME, VokieProtocol.SERVICE_UUID)
                 while (true) {
                     val accepted = serverSocket?.accept() ?: break
+                    reconnectJob?.cancel(); reconnectJob = null
+                    reconnectGeneration++ // invalidate any stale outbound reconnect
                     closeSocket()
                     socket = accepted; input = DataInputStream(accepted.inputStream); output = DataOutputStream(accepted.outputStream)
                     manuallyDisconnected = false
@@ -218,20 +246,41 @@ class BluetoothTransport(private val context: Context, private val scope: kotlin
 
     private fun scheduleReconnect(peerId: String) {
         if (manuallyDisconnected || reconnectJob?.isActive == true) return
+        val generation = ++reconnectGeneration
+        VokieLog.rescue("RECONNECT_STARTED transport=BLUETOOTH peer=$peerId generation=$generation")
         reconnectJob = scope.launch(Dispatchers.IO) {
-            repeat(RetryPolicy.MAX_RETRIES) { attempt ->
-                delay(RetryPolicy.delayMillis(attempt + 1))
-                if (manuallyDisconnected || adapter?.isEnabled != true) return@launch
-                if (runCatching { connect(peerId) }.isSuccess) { VokieLog.bt("Reconnected: $peerId"); return@launch }
+            repeat(reconnectPolicy.maxAttempts) { attempt ->
+                // Abort if superseded by a newer generation, user disconnected, or already reconnected.
+                if (reconnectGeneration != generation || manuallyDisconnected) {
+                    VokieLog.rescue("RECONNECT_CANCELLED transport=BLUETOOTH reason=${if (manuallyDisconnected) "intentional" else "stale"} attempt=$attempt")
+                    return@launch
+                }
+                if (_state.value == TransportConnectionState.CONNECTED) {
+                    VokieLog.rescue("RECONNECT_CANCELLED transport=BLUETOOTH reason=already_connected attempt=$attempt")
+                    return@launch
+                }
+                val backoff = reconnectPolicy.delayMs(attempt)
+                VokieLog.rescue("RECONNECT_BACKOFF transport=BLUETOOTH attempt=$attempt delay=${backoff}ms peer=$peerId")
+                delay(backoff)
+                // Re-check after delay.
+                if (reconnectGeneration != generation || manuallyDisconnected || adapter?.isEnabled != true) return@launch
+                if (_state.value == TransportConnectionState.CONNECTED) return@launch
+                VokieLog.rescue("RECONNECT_ATTEMPT transport=BLUETOOTH attempt=$attempt peer=$peerId")
+                val success = runCatching { connect(peerId) }.isSuccess
+                if (success) {
+                    VokieLog.rescue("RECONNECT_CONNECTED transport=BLUETOOTH attempt=$attempt peer=$peerId")
+                    return@launch
+                }
+                VokieLog.rescue("RECONNECT_FAILED transport=BLUETOOTH attempt=$attempt peer=$peerId")
             }
-            VokieLog.bt("Reconnect limit reached: $peerId")
+            VokieLog.rescue("RECONNECT_EXHAUSTED transport=BLUETOOTH peer=$peerId attempts=${reconnectPolicy.maxAttempts}")
         }
     }
 
     private fun registerReceiver() {
         if (receiverRegistered) return
         ContextCompat.registerReceiver(context, discoveryReceiver, IntentFilter().apply {
-            addAction(BluetoothDevice.ACTION_FOUND); addAction(BluetoothDevice.ACTION_UUID); addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED); addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
+            addAction(BluetoothDevice.ACTION_FOUND); addAction(BluetoothDevice.ACTION_UUID); addAction(BluetoothDevice.ACTION_NAME_CHANGED); addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED); addAction(BluetoothAdapter.ACTION_STATE_CHANGED)
         }, ContextCompat.RECEIVER_EXPORTED)
         receiverRegistered = true
     }
@@ -249,5 +298,7 @@ object VokieLog {
     fun msg(message: String) = debug("VOKIE][MSG", message)
     fun stt(message: String) = debug("VOKIE][STT", message)
     fun tts(message: String) = debug("VOKIE][TTS", message)
+    fun translation(message: String) = debug("VOKIE][TRANSLATION", message)
+    fun rescue(message: String) = debug("VOKIE_RESCUE", message)
     private fun debug(tag: String, message: String) { if (com.vokie.BuildConfig.DEBUG) runCatching { android.util.Log.i(tag, message) } }
 }

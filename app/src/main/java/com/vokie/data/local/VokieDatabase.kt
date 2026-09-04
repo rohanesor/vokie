@@ -27,10 +27,18 @@ interface ReceivedPacketDao {
     @Query("SELECT COUNT(*) FROM received_packets WHERE sourceDeviceId = :source AND messageId = :message AND sequenceNumber = :sequence") suspend fun count(source: String, message: String, sequence: Long): Int
 }
 
-@Dao interface PeerDao { @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(peer: PeerEntity); @Query("SELECT * FROM peers ORDER BY lastSeen DESC") fun observeAll(): Flow<List<PeerEntity>> }
+@Dao interface PeerDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun upsert(peer: PeerEntity)
+    @Query("SELECT * FROM peers ORDER BY lastSeen DESC") fun observeAll(): Flow<List<PeerEntity>>
+    @Query("SELECT * FROM peers ORDER BY lastSeen DESC") suspend fun getAll(): List<PeerEntity>
+    @Query("UPDATE peers SET sourceLanguage = :lang WHERE id = :id") suspend fun updateSourceLanguage(id: String, lang: String?)
+    @Query("UPDATE peers SET targetLanguage = :lang WHERE id = :id") suspend fun updateTargetLanguage(id: String, lang: String?)
+    @Query("UPDATE peers SET priority = :priority WHERE id = :id") suspend fun updatePriority(id: String, priority: Int)
+    @Query("UPDATE peers SET connectionState = :state WHERE id = :id") suspend fun updateConnectionState(id: String, state: String)
+}
 @Dao interface TransportEventDao { @Insert suspend fun insert(event: TransportEventEntity); @Query("SELECT * FROM transport_events ORDER BY timestamp DESC LIMIT :limit") fun observeRecent(limit: Int = 100): Flow<List<TransportEventEntity>> }
 
-@Database(entities = [MessageEntity::class, PeerEntity::class, TransportEventEntity::class, EmergencyAlertEntity::class, ReceivedPacketEntity::class, AppSettingsEntity::class], version = 4, exportSchema = true)
+@Database(entities = [MessageEntity::class, PeerEntity::class, TransportEventEntity::class, EmergencyAlertEntity::class, ReceivedPacketEntity::class, AppSettingsEntity::class], version = 5, exportSchema = true)
 abstract class VokieDatabase : RoomDatabase() {
     abstract fun messages(): MessageDao
     abstract fun receivedPackets(): ReceivedPacketDao
@@ -38,6 +46,13 @@ abstract class VokieDatabase : RoomDatabase() {
     abstract fun transportEvents(): TransportEventDao
 
     companion object {
+        val MIGRATION_4_5 = object : androidx.room.migration.Migration(4, 5) {
+            override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) {
+                database.execSQL("ALTER TABLE peers ADD COLUMN sourceLanguage TEXT")
+                database.execSQL("ALTER TABLE peers ADD COLUMN targetLanguage TEXT")
+                database.execSQL("ALTER TABLE peers ADD COLUMN priority INTEGER NOT NULL DEFAULT 0")
+            }
+        }
         val MIGRATION_3_4 = object : androidx.room.migration.Migration(3, 4) { override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) { database.execSQL("ALTER TABLE messages ADD COLUMN nextRetryAt INTEGER") } }
         val MIGRATION_2_3 = object : androidx.room.migration.Migration(2, 3) {
             override fun migrate(database: androidx.sqlite.db.SupportSQLiteDatabase) { database.execSQL("CREATE TABLE IF NOT EXISTS received_packets (sourceDeviceId TEXT NOT NULL, messageId TEXT NOT NULL, sequenceNumber INTEGER NOT NULL, receivedAt INTEGER NOT NULL, expiresAt INTEGER NOT NULL, PRIMARY KEY(sourceDeviceId, messageId, sequenceNumber))") }
@@ -53,7 +68,7 @@ abstract class VokieDatabase : RoomDatabase() {
         @Volatile private var instance: VokieDatabase? = null
         fun get(context: android.content.Context): VokieDatabase = instance ?: synchronized(this) {
             instance ?: Room.databaseBuilder(context.applicationContext, VokieDatabase::class.java, "vokie.db")
-                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                 .build().also { instance = it }
         }
     }

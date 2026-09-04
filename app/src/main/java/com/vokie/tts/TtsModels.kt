@@ -4,7 +4,7 @@ import com.vokie.domain.model.MessageType
 import com.vokie.domain.model.VokieLanguage
 import kotlinx.coroutines.flow.StateFlow
 
-const val SHERPA_ONNX_VERSION = "1.13.6"
+const val SHERPA_ONNX_VERSION = "1.13.7"
 const val DEFAULT_TTS_SPEED = 1.0f
 const val MIN_TTS_SPEED = 0.75f
 const val MAX_TTS_SPEED = 1.5f
@@ -16,14 +16,7 @@ enum class TtsLanguage(
 ) {
     ENGLISH("eng", VokieLanguage.EN, "English"),
     HINDI("hin", VokieLanguage.HI, "हिन्दी"),
-    GUJARATI("guj", VokieLanguage.GU, "ગુજરાતી"),
-    MARATHI("mar", VokieLanguage.MR, "मराठी"),
-    KANNADA("kan", VokieLanguage.KN, "ಕನ್ನಡ"),
-    MALAYALAM("mal", VokieLanguage.ML, "മലയാളം"),
-    TAMIL("tam", VokieLanguage.TA, "தமிழ்"),
-    TELUGU("tel", VokieLanguage.TE, "తెలుగు"),
-    ODIA("ory", VokieLanguage.OR, "ଓଡ଼ିଆ"),
-    BENGALI("ben", VokieLanguage.BN, "বাংলা");
+    TAMIL("tam", VokieLanguage.TA, "தமிழ்");
 
     companion object {
         fun fromMessageCode(code: String): TtsLanguage? = entries.firstOrNull { it.messageLanguage.code == code.uppercase() }

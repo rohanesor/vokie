@@ -35,6 +35,9 @@ data class PeerEntity(
     val connectionState: String,
     val transport: String,
     val isTrusted: Boolean,
+    val sourceLanguage: String? = null,
+    val targetLanguage: String? = null,
+    val priority: Int = 0,
 )
 
 @Entity(tableName = "transport_events")
