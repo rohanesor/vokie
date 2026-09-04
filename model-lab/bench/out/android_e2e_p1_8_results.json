@@ -1,0 +1,30 @@
+{
+  "phase": "SIH-L10-P1.8",
+  "date": "2026-09-04",
+  "device": {"model": "RMX3782", "android": "15", "api": 35, "abi": "arm64-v8a", "ram_mb": 5749, "sherpa_onnx": "1.13.7"},
+  "method": {"device_count": 1, "warm_repetitions": 5, "stt": "NOT_MEASURED", "transport": "NOT_MEASURED", "cpu_during_inference": "NOT_MEASURED", "tts_play_boundary": "engine.play entry/return"},
+  "translation_ms": {
+    "EN-HI": {"cold": 7297, "warm": [2006, 2017, 2050, 2084, 2062], "median": 2050, "p95": 2084, "min": 2006, "max": 2084, "successes": 6, "failures": 0},
+    "HI-EN": {"cold": 1825, "warm": [1800, 1858, 2218, 2131, 1816], "median": 1858, "p95": 2218, "min": 1800, "max": 2218, "successes": 6, "failures": 0},
+    "EN-TA": {"cold": 2457, "warm": [2310, 2278, 2307, 2301, 2191], "median": 2301, "p95": 2310, "min": 2191, "max": 2310, "successes": 6, "failures": 0},
+    "TA-EN": {"cold": 1809, "warm": [1858, 1864, 1832, 1824, 1815], "median": 1832, "p95": 1864, "min": 1815, "max": 1864, "successes": 6, "failures": 0},
+    "HI-TA": {"cold": 2027, "warm": [2077, 2083, 2133, 2027, 2002], "median": 2077, "p95": 2133, "min": 2002, "max": 2133, "successes": 6, "failures": 0},
+    "TA-HI": {"cold": 2032, "warm": [2365, 2140, 4405, 6411, 4588], "median": 4405, "p95": 6411, "min": 2140, "max": 6411, "successes": 6, "failures": 0}
+  },
+  "tts": {
+    "EN": {"cold_load_ms": 2989, "first_synthesis_ms": 2722, "first_audio_ms": 1970, "warm": [2584, 2506, 2645, 2761, 2086], "median": 2584, "p95": 2761, "sample_rate": 16000, "pss_kb": 364697, "successes": 6, "failures": 0},
+    "HI": {"cold_load_ms": 2397, "first_synthesis_ms": 637, "first_audio_ms": 1776, "warm": [479, 450, 471, 462, 445], "median": 462, "p95": 479, "sample_rate": 22050, "pss_kb": 329995, "successes": 6, "failures": 0},
+    "TA": {"cold_load_ms": 2154, "first_synthesis_ms": 4836, "first_audio_ms": 3077, "warm": [4183, 4162, 5735, 14745, 16366], "median": 5735, "p95": 16366, "sample_rate": 16000, "pss_kb": 375657, "successes": 6, "failures": 0},
+    "GU": {"cold_load_ms": 5966, "first_synthesis_ms": 6321, "first_audio_ms": 1360, "warm": [6418, 5796, 5551, 5763, 5515], "median": 5763, "p95": 6418, "sample_rate": 16000, "pss_kb": 345766, "successes": 6, "failures": 0}
+  },
+  "combined_translation_tts_ms": {
+    "EN-HI": {"translation": 9850, "tts": 1940, "playback": 2543, "total": 14333, "success": true, "includes_translation_cold_load": true},
+    "HI-EN": {"translation": 1942, "tts": 2204, "playback": 2020, "total": 6166, "success": true},
+    "EN-TA": {"translation": 2107, "tts": 3671, "playback": 2551, "total": 8329, "success": true}
+  },
+  "memory": {"baseline_pss_kb": 94274, "post_translation_pss_kb": 1101804, "final_pss_kb": 1278456, "final_native_heap_allocated_kb": 487195},
+  "thermal": {"command": "adb shell dumpsys thermalservice", "status": 3, "skin_c": 46.139, "skin_status": 3, "shell_skin_c": 41.0, "shell_skin_status": 2, "battery_c": 40.9},
+  "regression": {"unit_tests": 323, "failures": 0, "assemble_debug": "PASS"},
+  "total_operations": 63,
+  "total_failures": 0
+}
