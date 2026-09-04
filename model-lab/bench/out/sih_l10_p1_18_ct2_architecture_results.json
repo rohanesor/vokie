@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "phase": "SIH-L10-P1.18",
+  "final_decision": "NO SAFE OPTIMIZATION FOUND",
+  "mode": "research only; production behavior unchanged",
+  "starting_point": {"sha": "b9785eaadf491b4dd780cadff333268f73ad1cb8", "checkpoint_branch": "sih/laptop1-before-l10-p1-18", "validated_apk_sha256": "072f0387fc5104d1eea4d9d2d66eb39faca1b91b33eb4da9029e7513997614c9"},
+  "current_architecture": {
+    "model": "facebook/nllb-200-distilled-600M",
+    "converted_artifact": "osa911/nllb-200-distilled-600M-ct2-int8@46858753dbaf8eb5e21bb6f0037c3b90851e090a",
+    "model_bin_bytes": 619704329,
+    "model_bin_sha256": "ca3362e6e81906c0cf9c33bd6917674222c71d69617d0afb18507ce0b6c2e2e8",
+    "quantization": "int8_float16 stored CT2 artifact; CPU representation/backend behavior is runtime dependent",
+    "runtime": "CTranslate2 4.8.2 custom Android ARM64 JNI, CPU DEFAULT compute type, device index [0]",
+    "tokenizer": "NLLB SentencePiece, sentencepiece.bpe.model 4852054 bytes; shared vocabulary 5921176 bytes",
+    "languages_supported_by_model": "NLLB-200; current JNI mapping intentionally limited to EN/HI/TA",
+    "request": {"short_beam": 1, "long_beam": 4, "long_policy_piece_threshold": 20, "max_decoding_length": 256, "input": "[source language tag] + SentencePiece pieces + </s>", "target": "target language prefix"},
+    "session": "one Kotlin-owned lazy handle, mutex-serialized; one tokenizer and Translator per loaded handle",
+    "encoder_decoder_visibility": "opaque combined Translator.translate_batch call; API has no separate encoder/decoder timing callbacks",
+    "license": "CC-BY-NC-4.0 model provenance; CTranslate2 MIT"
+  },
+  "baseline_android_receiver": {"short_beam_1_median_ms": 1122.067, "short_beam_1_p95_ms": 1423.152, "medium_beam_1_median_ms": 2014.092, "medium_beam_1_p95_ms": 2058.185, "long_beam_4_first_ms": 9600.436, "long_series_status": "stopped at thermal status 3", "profile_native_heap_kb": 837636, "profile_pss_kb": 1357161},
+  "candidates": [
+    {"name": "Current NLLB-200 distilled 600M CT2 INT8", "category": "current smallest established multilingual CT2 candidate", "coverage": "direct EN/HI/TA in current route; NLLB family broader", "size": "619.7 MB model.bin", "android_ct2": true, "quality": "validated current artifact", "decision": "retain baseline; not a candidate change"},
+    {"name": "NLLB larger variants", "category": "multilingual checkpoint", "coverage": "sufficient in principle", "size": "larger than distilled 600M", "android_ct2": "conversion required", "quality": "not locally validated", "decision": "reject: no smaller/faster architectural rationale"},
+    {"name": "M2M100 418M", "category": "multilingual architecture", "coverage": "potentially sufficient", "size": "~1.94 GB FP32 documented", "android_ct2": "INT8 and ARM64 tokenizer/runtime path unverified", "quality": "no approved local validation", "decision": "reject before download/benchmark"},
+    {"name": "IndicTrans2 distilled direction-family set", "category": "Indic-specific architecture", "coverage": "requires EN-Indic 200M + Indic-EN 200M + Indic-Indic 320M for existing direct EN/HI/TA directions", "size": "~3.30 GB safetensors before tokenizer/runtime", "android_ct2": false, "quality": "no verified CT2-compatible Android artifact", "decision": "reject: incompatible runtime and impractical multi-artifact footprint"},
+    {"name": "Community IndicTrans2 ONNX exports", "category": "community converted architecture", "coverage": "direction dependent", "size": "documented INT8 candidate ~323 MB weights for Indic-Indic only", "android_ct2": false, "quality": "existing evaluation recorded degenerate outputs", "decision": "reject: quality/provenance/runtime gate failure"},
+    {"name": "Pair-specific OPUS/Marian EN-HI", "category": "smaller pair-specific checkpoint", "coverage": "EN-HI only", "size": "candidate-specific conversion required", "android_ct2": "could be converted in principle but no pinned local artifact", "quality": "not evaluated", "decision": "reject: cannot preserve EN/HI/TA direct multilingual routing"}
+  ],
+  "desktop_candidate_validation": {"required_texts": ["Help me.", "I am stuck and need help.", "I am really stuck right now and I need immediate help."], "executed": false, "reason": "No candidate passed provenance, architecture compatibility, full current-route coverage, and artifact availability gates. Downloading or integrating an unqualified large model would violate the evidence-first constraint."},
+  "android_candidate_validation": {"executed": false, "reason": "No desktop-qualified candidate exists. The current model baseline already reached thermal status 3 on a long series in P1.17; no speculative Android candidate run is justified."},
+  "production_changes": [],
+  "recommendation": "Treat current CT2 NLLB inference as the receiver architectural bottleneck. Leave production unchanged and end speculative CT2 latency tuning; repeat the official five-valid-run physical benchmark only when required by the next milestone."
+}
