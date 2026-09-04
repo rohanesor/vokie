@@ -165,7 +165,8 @@ class CommunicationViewModel(application: Application) : AndroidViewModel(applic
     fun stopVoice() { voiceCommands.trySend(VoiceCommand.STOP) }
     fun replayLastPcmBenchmark() = action {
         val preferred = preferredLanguage.value ?: throw IllegalStateException("Select a preferred language before replaying.")
-        app.sttEngine.replayLastCaptureForBenchmark(resolveProductionSttLanguage(preferred), preferred)
+        (app.sttEngine as? com.vokie.stt.WhisperSttEngine)?.replayLastCaptureForBenchmark(resolveProductionSttLanguage(preferred), preferred)
+            ?: throw IllegalStateException("PCM replay is only available with the Whisper STT engine.")
     }
     fun setTtsSpeed(speed: Float) = action { textToSpeech.setSpeed(speed) }
     fun downloadTtsLanguage(language: TtsLanguage) = action {

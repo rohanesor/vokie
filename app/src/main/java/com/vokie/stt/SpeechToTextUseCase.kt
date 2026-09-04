@@ -4,7 +4,7 @@ import kotlinx.coroutines.flow.StateFlow
 
 /** UI-facing offline STT boundary. Transport remains text-only and absent here. */
 class SpeechToTextUseCase(
-    private val engine: WhisperSttEngine,
+    private val engine: SttEngine,
     @Suppress("unused") private val languagePreferences: SttLanguagePreferences,
 ) {
     val status: StateFlow<SttStatus> = engine.status

@@ -26,6 +26,8 @@ import com.vokie.stt.SttLanguagePreferences
 import com.vokie.stt.UserLanguageProfilePreferences
 import com.vokie.stt.SttState
 import com.vokie.stt.SttResult
+import com.vokie.stt.SenseVoiceSttEngine
+import com.vokie.stt.SttEngine
 import com.vokie.stt.WhisperSttEngine
 import com.vokie.tts.*
 import kotlinx.coroutines.*
@@ -47,7 +49,7 @@ class VokieApplication : Application() {
     lateinit var wifiDirectTransport: WifiDirectTransport; private set
     lateinit var transportManager: TransportManager; private set
     lateinit var outboundProcessor: OutboundMessageProcessor; private set
-    lateinit var sttEngine: WhisperSttEngine; private set
+    lateinit var sttEngine: SttEngine; private set
     lateinit var sttLanguagePreferences: SttLanguagePreferences; private set
     lateinit var userLanguageProfilePreferences: UserLanguageProfilePreferences; private set
     lateinit var speechToText: SpeechToTextUseCase; private set
@@ -98,7 +100,9 @@ class VokieApplication : Application() {
         }
         outboundProcessor = OutboundMessageProcessor(messageRepository, transportManager, database.transportEvents(), applicationScope, peerSessionManager)
         val inboundPackets = InboundPacketCoordinator(messageRepository, database.receivedPackets())
-        sttEngine = WhisperSttEngine(applicationContext)
+        // SenseVoice is primary; Whisper is lazy fallback if SenseVoice model is absent.
+        val senseVoice = SenseVoiceSttEngine(applicationContext)
+        sttEngine = if (senseVoice.isAvailable) senseVoice else WhisperSttEngine(applicationContext)
         sttLanguagePreferences = SttLanguagePreferences(applicationContext)
         userLanguageProfilePreferences = UserLanguageProfilePreferences(applicationContext)
         speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)

@@ -121,7 +121,7 @@ internal class SttStateMachine(initial: SttState = SttState.UNINITIALIZED) {
             SttState.IMPORTING -> setOf(SttState.VALIDATING, SttState.ERROR, SttState.MODEL_MISSING)
             SttState.VALIDATING -> setOf(SttState.INITIALIZING, SttState.ERROR, SttState.MODEL_MISSING)
             SttState.INITIALIZING -> setOf(SttState.READY, SttState.MODEL_MISSING, SttState.ERROR, SttState.UNINITIALIZED)
-            SttState.READY -> setOf(SttState.LISTENING, SttState.INITIALIZING, SttState.UNINITIALIZED)
+            SttState.READY -> setOf(SttState.READY, SttState.LISTENING, SttState.INITIALIZING, SttState.UNINITIALIZED)
             SttState.LISTENING -> setOf(SttState.PROCESSING, SttState.READY, SttState.ERROR, SttState.UNINITIALIZED)
             SttState.PROCESSING -> setOf(SttState.RESULT, SttState.ERROR, SttState.UNINITIALIZED)
             SttState.RESULT -> setOf(SttState.LISTENING, SttState.INITIALIZING, SttState.UNINITIALIZED)
