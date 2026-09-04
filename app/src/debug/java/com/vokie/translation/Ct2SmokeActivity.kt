@@ -6,62 +6,59 @@ import android.os.Debug
 import android.os.SystemClock
 import android.util.Log
 import android.widget.TextView
+import com.vokie.domain.model.VokieLanguage
 import java.io.File
-import java.security.MessageDigest
 import kotlin.math.ceil
 
-/** Debug-only foreground CT2 validation surface. It is not a launcher or production UI. */
+/** Debug-only, receiver-local CT2 profiler. It neither changes production routing nor uses transport. */
 class Ct2SmokeActivity : Activity() {
     private lateinit var output: TextView
-    private var peakPssKb = 0
+
     override fun onCreate(state: Bundle?) {
         super.onCreate(state)
-        output = TextView(this).apply { textSize = 18f; setPadding(32, 48, 32, 48); text = "CT2 SMOKE TEST\n\nActivity started" }
-        setContentView(output); log("onCreate"); log("starting worker")
-        Thread({ runSmoke() }, "ct2-smoke").start()
+        output = TextView(this).apply { textSize = 13f; setPadding(24, 40, 24, 40); text = "CT2 receiver profiler starting…" }
+        setContentView(output)
+        Thread(::runProfile, "ct2-profile").start()
     }
-    private fun runSmoke() {
+
+    private fun runProfile() = try {
+        val dir = File(filesDir, "ct2/nllb600m")
+        check(File(dir, "model.bin").length() == MODEL_BYTES) { "Model is not staged at ${dir.absolutePath}" }
+        listOf("config.json", "shared_vocabulary.json", "sentencepiece.bpe.model").forEach { check(File(dir, it).isFile) { "Missing $it" } }
+        val native = Ctranslate2Native()
+        val loadStarted = SystemClock.elapsedRealtime()
+        val handle = native.nativeLoadModel(dir.absolutePath)
+        check(handle != 0L)
+        val report = StringBuilder("CT2 receiver-local profile\nload_ms=${SystemClock.elapsedRealtime() - loadStarted}\n")
         try {
-            log("worker started"); status("JNI loading..."); log("loading JNI")
-            val native = Ctranslate2Native(); log("JNI loaded"); status("JNI loaded\nModel staging..."); log("staging model")
-            val dir = File(filesDir, "models/ct2/nllb600m"); val model = File(dir, "model.bin")
-            check(model.length() == 619_704_329L) { "model.bin size=${model.length()}" }
-            listOf("config.json", "shared_vocabulary.json", "sentencepiece.bpe.model").forEach { check(File(dir, it).isFile) { "Missing CT2 $it" } }
-            log("verifying model"); check(model.sha256() == MODEL_SHA) { "CT2 model integrity mismatch" }; log("model hash verified")
-            peakPssKb = pssKb(); log("MEMORY beforeLoadPssKb=$peakPssKb")
-            val loadStarted = SystemClock.elapsedRealtime(); log("nativeLoadModel begin")
-            val handle = native.nativeLoadModel(dir.absolutePath); check(handle != 0L)
-            recordPss(); log("nativeLoadModel success ms=${SystemClock.elapsedRealtime() - loadStarted} pssKb=${pssKb()}")
-            try {
-                val cases = listOf(
-                    Triple("EN", "HI", "Help me."), Triple("EN", "TA", "Help me."),
-                    Triple("HI", "EN", "मुझे मदद चाहिए।"), Triple("HI", "TA", "मुझे मदद चाहिए।"),
-                    Triple("TA", "EN", "எனக்கு உதவி தேவை."), Triple("TA", "HI", "எனக்கு உதவி தேவை.")
-                )
-                status("Model ready\nSix directions...")
-                cases.forEach { (source, target, text) -> direct(native, handle, source, target, text) }
-                listOf(Triple("EN", "EN", "Help me."), Triple("HI", "HI", "मुझे मदद चाहिए।"), Triple("TA", "TA", "எனக்கு உதவி தேவை.")).forEach { (source, target, text) ->
-                    check(source == target); log("BYPASS $source->$target nativeTranslate skipped output=$text")
-                }
-                status("Six directions passed\n20 warm translations...")
-                val samples = (1..20).map { direct(native, handle, "EN", "HI", "Help me.", "WARM_$it") }
-                val ordered = samples.sorted(); val median = ordered[9]; val p95 = ordered[ceil(samples.size * .95).toInt() - 1]
-                log("STABILITY first=${samples.first()} median=$median p95=$p95 final=${samples.last()} pssKb=${pssKb()} peakPssKb=$peakPssKb")
-                status("PASS\n6/6 directions\n20 warm translations")
-            } finally { native.nativeUnloadModel(handle); log("model unloaded pssKb=${pssKb()} peakPssKb=$peakPssKb") }
-        } catch (error: Throwable) {
-            Log.e(TAG, "FAILURE ${error::class.java.name}: ${error.message}", error); status("FAIL\n${error::class.java.simpleName}: ${error.message}")
-        }
+            // Warm-up is recorded separately and excluded from the five measured repetitions.
+            direct(native, handle, "Help me.")
+            val cases = listOf(
+                "short" to "Help me.",
+                "medium" to "Please send medical rescue to my location now.",
+                "long" to "I am trapped under a collapsed roof and cannot move my left leg. Please send medical rescue workers to my current location immediately.",
+            )
+            cases.forEach { (label, text) ->
+                val samples = (1..5).map { direct(native, handle, text) }
+                val sorted = samples.sorted()
+                report.append("$label chars=${text.length} samples_ms=${samples.joinToString()} median=${median(samples)} p95=${sorted[ceil(samples.size * .95).toInt() - 1]} min=${sorted.first()} max=${sorted.last()}\n")
+            }
+            report.append("pss_kb=${pssKb()} native_heap_kb=${Debug.getNativeHeapAllocatedSize() / 1024} cpu_elapsed_ms=${android.os.Process.getElapsedCpuTime()}\n")
+            Log.i(TAG, report.toString())
+            runOnUiThread { output.text = report.toString() }
+        } finally { native.nativeUnloadModel(handle) }
+    } catch (error: Throwable) {
+        Log.e(TAG, "FAILED ${error.javaClass.simpleName}: ${error.message}", error)
+        runOnUiThread { output.text = "FAILED: ${error.message}" }
     }
-    private fun direct(native: Ctranslate2Native, handle: Long, source: String, target: String, text: String, label: String = "RESULT"): Long {
-        check(source != target); val start = SystemClock.elapsedRealtime(); log("$label begin $source->$target")
-        val value = native.nativeTranslate(handle, source, target, text); val ms = SystemClock.elapsedRealtime() - start
-        check(value.isNotBlank()) { "Empty $source->$target result" }; recordPss(); log("$label $source->$target ms=$ms output=$value"); return ms
+
+    private fun direct(native: Ctranslate2Native, handle: Long, text: String): Long {
+        val start = SystemClock.elapsedRealtime()
+        val output = native.nativeTranslate(handle, VokieLanguage.EN.code, VokieLanguage.HI.code, text)
+        check(output.isNotBlank()) { "empty translation" }
+        return SystemClock.elapsedRealtime() - start
     }
-    private fun pssKb(): Int { val info = Debug.MemoryInfo(); Debug.getMemoryInfo(info); return info.totalPss }
-    private fun recordPss() { peakPssKb = maxOf(peakPssKb, pssKb()) }
-    private fun log(message: String) = Log.i(TAG, message)
-    private fun status(message: String) = runOnUiThread { output.text = "CT2 SMOKE TEST\n\n$message" }
-    private fun File.sha256() = inputStream().use { input -> val digest = MessageDigest.getInstance("SHA-256"); val bytes = ByteArray(65536); generateSequence { input.read(bytes).takeIf { it > 0 } }.forEach { digest.update(bytes, 0, it) }; digest.digest().joinToString("") { "%02x".format(it) } }
-    companion object { const val TAG = "VOKIE_CT2_SMOKE"; const val MODEL_SHA = "ca3362e6e81906c0cf9c33bd6917674222c71d69617d0afb18507ce0b6c2e2e8" }
+    private fun median(values: List<Long>): Long = values.sorted()[values.size / 2]
+    private fun pssKb(): Int = Debug.MemoryInfo().also(Debug::getMemoryInfo).totalPss
+    companion object { const val TAG = "VOKIE_CT2_PROFILE"; const val MODEL_BYTES = 619_704_329L }
 }

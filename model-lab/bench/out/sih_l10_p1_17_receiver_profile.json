@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "phase": "SIH-L10-P1.17",
+  "status": "NO_SAFE_OPTIMIZATION_PROMOTED",
+  "checkpoint": {"sha": "7ef8509f4f7d8e2f8a912c317a17a4dfafc07f5d", "branch": "sih/laptop1-before-l10-p1-17"},
+  "baseline": {"source": "P1.16 four valid diagnostic runs", "warm_receiver_t5_t8_median_ms": 1986.7, "warm_translation_median_ms": 733.8, "warm_tts_median_ms": 189.8, "warm_playback_median_ms": 992.6},
+  "receiver": {"device": "RMX3782", "android": 15, "abi": "arm64-v8a"},
+  "ct2_configuration": {"model": "NLLB-600M", "device": "CPU", "compute_type": "DEFAULT", "configured_device_indices": [0], "short_input_beam": 1, "long_input_beam": 4, "max_decoding_length": 256, "engine_instances_observed": 1, "model_loads_observed": 1, "tokenizer_reused": true},
+  "controlled_receiver_only_profile": {
+    "method": "Debug-only direct JNI profile on Realme. One warm-up preceded each fixed text length. Native timestamps separate SentencePiece encode, opaque CT2 translate_batch, and SentencePiece decode. The profile was stopped on thermal status 3 during the first long sample.",
+    "short": {"text": "Help me.", "chars": 8, "pieces": 5, "beam": 1, "warm_samples_ms": [1130.485, 1122.067, 1031.312, 1053.153, 1423.152], "median_ms": 1122.067, "p95_ms": 1423.152, "min_ms": 1031.312, "max_ms": 1423.152, "encode_ms_range": [0.043, 0.097], "decode_ms_range": [0.028, 0.030]},
+    "medium": {"text": "Please send medical rescue to my location now.", "chars": 46, "pieces": 12, "beam": 1, "warm_samples_ms": [2058.185, 2014.278, 2014.092, 2003.827, 1983.325], "median_ms": 2014.092, "p95_ms": 2058.185, "min_ms": 1983.325, "max_ms": 2058.185, "encode_ms_range": [0.138, 3.738], "decode_ms_range": [0.080, 1.657]},
+    "long": {"text_chars": 135, "pieces": 31, "beam": 4, "samples_completed": 1, "sample_ms": 9600.436, "status": "STOPPED_BECAUSE_THERMAL_STATUS_REACHED_3"}
+  },
+  "stage_conclusion": {"ct2_preprocessing": "SentencePiece encoding was <=3.738 ms and decoding <=1.657 ms.", "ct2_encoder": "Not separately measurable through the deployed CT2 translate_batch API.", "ct2_decoder": "Not separately measurable through the deployed CT2 translate_batch API.", "ct2_inference": "The opaque combined CT2 native inference call consumed essentially all translation time.", "translation_to_tts_enqueue": "P1.16 receiver handoff proceeded directly after translation; no queue backlog was observed.", "tts": "P1.16 warm Hindi synthesis was 181.5-197.9 ms. Its 2360.4 ms tail was run-1 cold model load (2007 ms) plus first native call, not warm architecture cost.", "audiotrack": "Prior P1.15A profiling measured preparation ~14-22 ms and write <0.1 ms; P1.16 playback is generated speech duration (~962-1068 ms), not startup overhead."},
+  "invariants": {"translation_worker": 1, "translation_model_reload_per_message": false, "tts_engines": 1, "tts_native_sessions": 1, "tts_queue_workers": 1, "queue_depth_after_turn": 0, "active_jobs_after_turn": 0},
+  "memory_thermal": {"profile_native_heap_kb": 837636, "profile_pss_kb": 1357161, "thermal_status_at_stop": 3, "decision": "No thread/affinity/lifecycle experiment was attempted or promoted after thermal escalation."},
+  "experiments": [{"name": "A/B/C: beam=1 and model/tokenizer/session reuse verification", "result": "PASS_CONFIGURATION; one model load and reuse in controlled session", "production_change": false}, {"name": "D/E: thread or CPU-affinity changes", "result": "NOT_RUN; no evidence justified changing CT2 runtime configuration, and thermal status reached 3", "production_change": false}, {"name": "F: input length", "result": "MEASURED; latency scaled sharply from short to medium to long", "production_change": false}, {"name": "G: lifecycle scheduling / GC correlation", "result": "INCONCLUSIVE; no GC or scheduler trace was captured, so no causal claim", "production_change": false}],
+  "recommended_next_step": "Keep the current CT2/TTS configuration. Cool device and, if needed, repeat only a controlled thermal-aware receiver profile; do not run Telugu/Kannada work."
+}

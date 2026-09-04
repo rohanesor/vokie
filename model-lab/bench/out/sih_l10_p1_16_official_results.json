@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "phase": "SIH-L10-P1.16",
+  "status": "FAIL",
+  "decision": "Official five-run benchmark failed its transcript-quality validity gate: 4/5 valid; run 5 was not replaced.",
+  "configuration": {
+    "commit_before_benchmark": "7ef8509f4f7d8e2f8a912c317a17a4dfafc07f5d",
+    "apk_sha256": "072f0387fc5104d1eea4d9d2d66eb39faca1b91b33eb4da9029e7513997614c9",
+    "phrase": "Help me.",
+    "direction": "EN->HI",
+    "stt": "SenseVoice-Small int8",
+    "translation": "CT2 NLLB, beam=1 for short input",
+    "tts": "sherpa-onnx 1.13.7 MMS/VITS Hindi, 2 threads"
+  },
+  "devices": {
+    "sender": {"model": "vivo V2205", "serial": "10BCAC2HM5000CR", "android": 14, "abi": "arm64-v8a", "pid": 30131},
+    "receiver": {"model": "Realme RMX3782", "serial": "MJPVXCSG9HYL65YL", "android": 15, "abi": "arm64-v8a", "pid": 9578}
+  },
+  "runs": [
+    {"run": 1, "message_id": "64834df9-24c7-4c34-800b-181cce824815", "transcript": "help me", "audio_ms": 1040, "valid": true, "stt_ms": 350.1, "t2_t3_ms": 26.6, "t3_t4_ms": 7.6, "tx_ack_ms": 127.6, "rx_to_translation_start_ms": 65.3, "translation_ms": 3303.4, "tts_synthesis_ms": 2360.4, "tts_rtf": 0.3844, "playback_ms": 1051.0, "receiver_t5_t8_ms": 6781.5, "queue_depth": 0, "active_jobs": 0, "note": "Cold CT2/Hindi-TTS model costs retained."},
+    {"run": 2, "message_id": "22ef14f7-c3e5-4786-af37-03d28224247e", "transcript": "help me", "audio_ms": 840, "valid": true, "stt_ms": 273.2, "t2_t3_ms": 35.0, "t3_t4_ms": 3.3, "tx_ack_ms": 362.0, "rx_to_translation_start_ms": 48.9, "translation_ms": 753.3, "tts_synthesis_ms": 181.5, "tts_rtf": 0.1974, "playback_ms": 964.6, "receiver_t5_t8_ms": 1949.9, "queue_depth": 0, "active_jobs": 0},
+    {"run": 3, "message_id": "276a29f4-93d5-4d64-b585-9100fbc9cab2", "transcript": "help me", "audio_ms": 760, "valid": true, "stt_ms": 269.4, "t2_t3_ms": 15.2, "t3_t4_ms": 5.6, "tx_ack_ms": 79.5, "rx_to_translation_start_ms": 52.4, "translation_ms": 717.9, "tts_synthesis_ms": 193.0, "tts_rtf": 0.1901, "playback_ms": 1067.8, "receiver_t5_t8_ms": 2032.0, "queue_depth": 0, "active_jobs": 0},
+    {"run": 4, "message_id": "d7fda153-db59-4710-b271-150b746092ba", "transcript": "help me", "audio_ms": 1060, "valid": true, "stt_ms": 278.7, "t2_t3_ms": 17.1, "t3_t4_ms": 2.8, "tx_ack_ms": 89.4, "rx_to_translation_start_ms": 67.1, "translation_ms": 733.8, "tts_synthesis_ms": 189.8, "tts_rtf": 0.1975, "playback_ms": 992.6, "receiver_t5_t8_ms": 1986.7, "queue_depth": 0, "active_jobs": 0},
+    {"run": 5, "message_id": "6a176a0e-cffd-48ff-b153-0c205bf71a28", "transcript": "helled me", "audio_ms": 1000, "valid": false, "invalid_reason": "Transcript did not match the controlled phrase 'Help me.'; quality validity gate requires correct capture.", "stt_ms": 314.1, "t2_t3_ms": 12.2, "t3_t4_ms": 4.5, "tx_ack_ms": 350.5, "rx_to_translation_start_ms": 45.9, "translation_ms": 741.8, "tts_synthesis_ms": 197.9, "tts_rtf": 0.2155, "playback_ms": 962.0, "receiver_t5_t8_ms": 1952.2, "queue_depth": 0, "active_jobs": 0}
+  ],
+  "all_observed_runs_statistics": {
+    "stt_ms": {"median": 278.7, "p95": 350.1, "min": 269.4, "max": 350.1},
+    "tx_ack_ms": {"median": 127.6, "p95": 362.0, "min": 79.5, "max": 362.0},
+    "translation_ms": {"median": 741.8, "p95": 3303.4, "min": 717.9, "max": 3303.4},
+    "tts_synthesis_ms": {"median": 193.0, "p95": 2360.4, "min": 181.5, "max": 2360.4},
+    "playback_ms": {"median": 992.6, "p95": 1067.8, "min": 962.0, "max": 1067.8},
+    "receiver_t5_t8_ms": {"median": 1986.7, "p95": 6781.5, "min": 1949.9, "max": 6781.5}
+  },
+  "valid_run_count": 4,
+  "required_valid_run_count": 5,
+  "pipeline_invariants": {"submissions": 5, "packet_tx": 5, "receiver_rx": 5, "tts_jobs": 5, "tts_completions": 5, "queue_drains": 5, "duplicates": 0, "process_restarts": 0, "fatal_errors_or_anrs": 0, "activities_per_device": 1},
+  "memory_kb": {
+    "sender_fresh": {"pss": 643707, "native_heap": 356992, "thermal_status": 0},
+    "sender_final": {"pss": 649963, "native_heap": 363764, "thermal_status": 0},
+    "receiver_fresh": {"pss": 712029, "native_heap": 338660, "thermal_status": 1},
+    "receiver_final": {"pss": 1459681, "native_heap": 1081216, "thermal_status": 1},
+    "interpretation": "Receiver Hindi TTS model load occurs in run 1 and is retained. Post-load receiver PSS/native heap stabilized across runs 2-5; it did not progressively grow."
+  },
+  "clock_domain_note": "Sender and receiver elapsedRealtimeNanos values were never subtracted across devices; all metrics are local-domain intervals.",
+  "official_latency_benchmark_passed": false
+}

@@ -4,6 +4,7 @@
 #include <mutex>
 #include <string>
 #include <vector>
+#include <chrono>
 #include <ctranslate2/translator.h>
 #include <sentencepiece_processor.h>
 
@@ -41,16 +42,26 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_vokie_translation_Ctranslate2Nativ
     const char *src = lang(s), *tgt = lang(t); std::string value(input);
     env->ReleaseStringUTFChars(source,s); env->ReleaseStringUTFChars(target,t); env->ReleaseStringUTFChars(text,input);
     if (!src || !tgt) throw std::invalid_argument("Unsupported NLLB language");
-    std::vector<std::string> pieces; auto status = session->tokenizer.Encode(value, &pieces); if (!status.ok()) throw std::runtime_error(status.ToString());
+    const auto request_started = std::chrono::steady_clock::now();
+    std::vector<std::string> pieces;
+    auto encode_started = std::chrono::steady_clock::now();
+    auto status = session->tokenizer.Encode(value, &pieces); if (!status.ok()) throw std::runtime_error(status.ToString());
     pieces.insert(pieces.begin(), src); pieces.emplace_back("</s>");
+    const auto encode_ms = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - encode_started).count() / 1000.0;
     ctranslate2::TranslationOptions options;
     // Beam 1 (greedy) for short rescue sentences; beam 4 only for longer text.
     options.beam_size = (pieces.size() <= 20) ? 1 : 4;
     options.max_decoding_length = 256;
-    std::lock_guard<std::mutex> lock(session->mutex);
-    auto result = session->translator->translate_batch({pieces}, {{tgt}}, options);
-    auto output = result.at(0).hypotheses.at(0); if (!output.empty() && output.front() == tgt) output.erase(output.begin());
+    auto infer_started = std::chrono::steady_clock::now();
+    ctranslate2::TranslationResult result;
+    { std::lock_guard<std::mutex> lock(session->mutex); result = session->translator->translate_batch({pieces}, {{tgt}}, options).at(0); }
+    const auto infer_ms = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - infer_started).count() / 1000.0;
+    auto output = result.hypotheses.at(0); if (!output.empty() && output.front() == tgt) output.erase(output.begin());
+    auto decode_started = std::chrono::steady_clock::now();
     std::string decoded; status = session->tokenizer.Decode(output, &decoded); if (!status.ok()) throw std::runtime_error(status.ToString());
+    const auto decode_ms = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - decode_started).count() / 1000.0;
+    const auto total_ms = std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now() - request_started).count() / 1000.0;
+    __android_log_print(ANDROID_LOG_INFO, TAG, "CT2_PROFILE chars=%zu pieces=%zu beam=%d tokenizer_encode_ms=%.3f inference_combined_ms=%.3f tokenizer_decode_ms=%.3f total_native_ms=%.3f", value.size(), pieces.size(), options.beam_size, encode_ms, infer_ms, decode_ms, total_ms);
     return env->NewStringUTF(decoded.c_str());
   } catch (const std::exception& e) { fail(env, e.what()); return nullptr; }
 }
