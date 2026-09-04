@@ -88,12 +88,14 @@ class TtsPlaybackQueue(
         try {
             setState(item.messageId, MessageTtsState.SYNTHESIZING)
             timing?.ttsStart(item.messageId)
-            val audio = engine.synthesize(item.text, item.language, speed.value).first
-            timing?.audioReady(item.messageId)
+            val synthesis = engine.synthesize(item.text, item.language, speed.value)
+            val audio = synthesis.first
+            timing?.audioReady(item.messageId, audio.durationMs, synthesis.second.realTimeFactor)
             setState(item.messageId, MessageTtsState.PLAYING)
             // Engine.play enters AudioTrack playback immediately after queue handoff.
             timing?.playbackStart(item.messageId)
             engine.play(audio, emergency = item.messageType == MessageType.SOS)
+            timing?.playbackComplete(item.messageId)
             setState(item.messageId, MessageTtsState.COMPLETED)
         } catch (_: Throwable) {
             timing?.fail(null, item.messageId, TurnTimingFailure.TTS)

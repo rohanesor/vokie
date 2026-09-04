@@ -299,6 +299,7 @@ object VokieLog {
     fun stt(message: String) = debug("VOKIE][STT", message)
     fun tts(message: String) = debug("VOKIE][TTS", message)
     fun translation(message: String) = debug("VOKIE][TRANSLATION", message)
+    fun timing(message: String) = debug("VOKIE_TIMING", message)
     fun rescue(message: String) = debug("VOKIE_RESCUE", message)
     private fun debug(tag: String, message: String) { if (com.vokie.BuildConfig.DEBUG) runCatching { android.util.Log.i(tag, message) } }
 }

@@ -4,6 +4,7 @@ import com.vokie.domain.model.*
 import com.vokie.location.LocationMeasurementCollector
 import com.vokie.location.MeasurementTrigger
 import com.vokie.ranging.RelativePeerLocalizationEngine
+import com.vokie.stt.TurnTimingRecorder
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -20,6 +21,7 @@ class TransportManager(
     private val measurements: LocationMeasurementCollector? = null,
     private val localization: RelativePeerLocalizationEngine? = null,
     scope: kotlinx.coroutines.CoroutineScope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default),
+    private val timing: TurnTimingRecorder? = null,
 ) {
     private val bluetoothPacket = BluetoothPacketTransport(bluetooth, scope)
     val pendingAcks = PendingAckRegistry()
@@ -76,7 +78,12 @@ class TransportManager(
         VokieLog.bt("TX_CREATE id=${message.id}")
         VokieLog.bt("WIFI_PACKET_TX messageId=${message.id} frames=${frames.size}")
         var result = SendResult(message.id, true)
-        frames.forEachIndexed { index, frame -> if (result.acknowledged) result = sendPacket(frame, message.id, message.sequenceNumber, index == frames.lastIndex) }
+        frames.forEachIndexed { index, frame ->
+            if (result.acknowledged) {
+                if (index == 0) timing?.transportTx(message.id, message.sequenceNumber)
+                result = sendPacket(frame, message.id, message.sequenceNumber, index == frames.lastIndex)
+            }
+        }
         if (result.acknowledged) {
             val rtt = android.os.SystemClock.elapsedRealtime() - started
             measurements?.record(peer, MeasurementTrigger.ACK_RECEIVED, connectionState.value, wifiDirect?.state?.value ?: PacketTransportState.IDLE, transport?.type, rttMs = rtt, delivered = true)
@@ -104,6 +111,7 @@ class TransportManager(
                         if (pendingAcks.resolve(decoded.messageId, decoded.sequenceNumber)) {
                             VokieLog.bt("ACK_CORRELATED id=${decoded.messageId}")
                             VokieLog.bt("TX_COMPLETE id=${decoded.messageId}")
+                            timing?.transportAck(decoded.messageId, decoded.sequenceNumber)
                         } else {
                             VokieLog.bt("ACK_UNKNOWN id=${decoded.messageId} pending=${pendingAcks.size()}")
                         }

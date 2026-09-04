@@ -83,7 +83,8 @@ class VokieApplication : Application() {
         proximityMeasurements = LocationMeasurementCollector()
         localizationEngine = RelativePeerLocalizationEngine(applicationContext)
         peerSessionManager = PeerSessionManager(database.peers())
-        transportManager = TransportManager(bluetoothTransport, wifiDirectTransport, proximityMeasurements, localizationEngine, applicationScope)
+        turnTiming = TurnTimingRecorder()
+        transportManager = TransportManager(bluetoothTransport, wifiDirectTransport, proximityMeasurements, localizationEngine, applicationScope, turnTiming)
         // Wire transport disconnect → re-queue TRANSMITTING messages + update peer sessions.
         transportManager.disconnectListener = { transport, peerId ->
             applicationScope.launch(Dispatchers.IO) {
@@ -101,7 +102,6 @@ class VokieApplication : Application() {
         sttLanguagePreferences = SttLanguagePreferences(applicationContext)
         userLanguageProfilePreferences = UserLanguageProfilePreferences(applicationContext)
         speechToText = SpeechToTextUseCase(sttEngine, sttLanguagePreferences)
-        turnTiming = TurnTimingRecorder()
         continuousTurnManager = ContinuousTurnManager(sttEngine, applicationScope, timing = turnTiming)
         val bundledModels = BundledModelStore(applicationContext)
         val ttsModels = TtsModelManager(applicationContext)
@@ -155,7 +155,7 @@ class VokieApplication : Application() {
                     runCatching {
                         val remotePeerId = frame.packet.packet.sourceDeviceId
                         // T4 is packet ingress, before deduplication/translation; PacketV2 stays untouched.
-                        turnTiming.packetReceived(frame.packet.packet.messageId)
+                        turnTiming.packetReceived(frame.packet.packet.messageId, frame.packet.packet.sequenceNumber)
                         inboundPackets.acceptDecoded(frame.packet, frame.transport) { transport, messageId, sequenceNumber ->
                             transportManager.sendAck(transport, messageId, deviceId, sequenceNumber)
                         }
@@ -200,6 +200,7 @@ class VokieApplication : Application() {
                         return@runCatching
                     }
                     VokieLog.translation("TRANSLATION_RECEIVER_REQUEST messageId=${message.id} source=${source.code} target=${target.code}")
+                    turnTiming.translationStart(message.id, source.code, target.code)
                     val outcome = receiverTranslation.presentOnce(message.id, message.text, source, target)
                     turnTiming.translationComplete(message.id)
                     VokieLog.translation("TRANSLATION_RECEIVER_RESULT messageId=${message.id} state=${outcome.presentation.state} new=${outcome.isNew} error=${outcome.presentation.error}")

@@ -109,6 +109,7 @@ class ContinuousTurnManager(
         collectorJob?.cancel()
         collectorJob = scope.launch { collectStt() }
         beginTurn()
+        currentTurnId?.let { timing?.sttStart(it) }
         stt.start(language, profile, finalizeOnVad = (mode == TurnMode.CONTINUOUS))
     }
 
@@ -152,7 +153,7 @@ class ContinuousTurnManager(
         if (result.timestamp == lastResultTimestamp) return
         lastResultTimestamp = result.timestamp
         val turnId = currentTurnId ?: return
-        timing?.sttComplete(turnId)
+        timing?.sttComplete(turnId, result.text, result.audioDurationMs)
         val sentences = segmenter.split(result.text, result.language.messageLanguage)
         sentences.forEachIndexed { index, sentence ->
             _events.emit(TurnEvent.Sentence(turnId, index, sentence, result.language.messageLanguage))
